@@ -1,21 +1,54 @@
-// backend/middleware/authMiddleware.js (Actualizado)
+// backend/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'este-es-un-secreto-muy-seguro-que-deberia-estar-en-un-archivo-de-configuracion'; // En una app real, esto no estaría aquí.
+const { ROLES_TIPO_INSPECTOR } = require('../utils/roles');
+const { JWT_SECRET } = require('../config');
 
-function authMiddleware(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  if (!authHeader) return res.status(401).json({ error: 'No se proveyó un token.' });
-
-  const token = authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token mal formado.' });
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Token inválido.' });
+async function authenticateToken(req, res, next) {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Token mal formado o ausente.' });
     }
-    req.user = user; // Guardamos los datos del usuario del token en la petición
+    const token = authHeader.split(' ')[1];
+    const decodedUser = jwt.verify(token, JWT_SECRET);
+    req.user = decodedUser;
     next();
-  });
+  } catch (err) {
+    return res.status(403).json({ error: 'Token inválido o expirado.' });
+  }
 }
 
-module.exports = authMiddleware;
+const checkRole = (rolesPermitidos) => {
+  return (req, res, next) => {
+    // ¡CORREGIDO AQUÍ!
+    if (!req.user || !req.user.rol) {
+      return res.status(403).json({ message: 'Acceso denegado. Rol de usuario no encontrado.' });
+    }
+    const rolUsuario = req.user.rol.toLowerCase();
+    if (rolesPermitidos.map(r => r.toLowerCase()).includes(rolUsuario)) {
+      next();
+    } else {
+      return res.status(403).json({ message: 'No tienes permiso para realizar esta acción.' });
+    }
+  };
+};
+
+function isInspectorType(req, res, next) {
+    // ¡CORREGIDO AQUÍ!
+    if (!req.user || !req.user.rol) {
+        return res.status(403).json({ message: 'Acceso denegado.' });
+    }
+    
+    const rolUsuario = req.user.rol.toLowerCase();
+    if (ROLES_TIPO_INSPECTOR.includes(rolUsuario)) {
+        next();
+    } else {
+        return res.status(403).json({ message: 'Esta acción solo puede ser realizada por un Inspector o rol equivalente.' });
+    }
+}
+
+module.exports = {
+  authenticateToken,
+  checkRole,
+  isInspectorType
+};

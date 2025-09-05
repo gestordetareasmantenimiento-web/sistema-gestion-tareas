@@ -1,6 +1,6 @@
 <script lang="ts">
   export let tarea: any;
-  export let userRole: string = ''; // Recibimos el rol del usuario logueado
+  export let userRole: string = '';
 
   const rol = userRole ? userRole.toLowerCase() : '';
 
@@ -8,11 +8,16 @@
   $: cardClass = (() => {
     if (!tarea || !tarea.estado) return '';
     const estado = tarea.estado.toLowerCase();
-    if (estado.includes('asignada')) return 'pendiente';
-    if (estado.includes('pendiente')) return 'en-aprobacion';
-    if (estado.includes('observada')) return 'observado';
+    
+    // El orden es importante para que los estados más específicos se detecten primero
     if (estado.includes('pago')) return 'pasado-a-pago';
-    return '';
+    if (estado.includes('observada')) return 'observado';
+    if (estado.includes('pendiente certificación')) return 'en-aprobacion';
+    if (estado.includes('asignada')) return 'pendiente';
+    // ¡NUEVA LÓGICA! Si incluye 'aprobación' pero no es uno de los anteriores, es aprobado.
+    if (estado.includes('aprobación')) return 'aprobados'; 
+
+    return ''; // Color por defecto
   })();
 </script>
 
@@ -42,7 +47,7 @@
           <strong>Región:</strong>
           <span>{tarea.region}</span>
         </div>
-      {:else if rol === 'inspector'}
+      {:else if ['inspector', 'supervisor de disponibilidad', 'supervisor de soporte', 'supervisor de provision'].includes(rol)}
         <div class="info-item">
           <strong>Proveedor:</strong>
           <span>{tarea.proveedor_nombre}</span>
@@ -139,9 +144,11 @@
     margin-top: auto;
   }
 
-  /* Colores de Borde */
+  /* --- Colores de Borde --- */
   .pendiente { border-left-color: #ffc107; }
   .en-aprobacion { border-left-color: #6f42c1; }
   .observado { border-left-color: #fd7e14; }
   .pasado-a-pago { border-left-color: #28a745; }
+  /* ¡NUEVO ESTILO AÑADIDO! */
+  .aprobados { border-left-color: #17a2b8; }
 </style>

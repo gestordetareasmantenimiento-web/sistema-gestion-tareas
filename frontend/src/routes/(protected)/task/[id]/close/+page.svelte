@@ -54,6 +54,13 @@
     currentStep++;
   }
 
+  // --- ¡NUEVA FUNCIÓN PARA CANCELAR! ---
+  function handleCancel() {
+    if (confirm('¿Estás seguro de que quieres cancelar? Se perderán todos los datos cargados.')) {
+      goto(`/task/${data.tarea?.id}`);
+    }
+  }
+
   // --- LÓGICA DE SELECCIÓN CORREGIDA PARA MATERIALES ---
   function toggleMaterial(item: any, listName: 'usados' | 'recuperados') {
     let selectionArray = listName === 'usados' ? seleccionMatUsados : seleccionMatRecuperados;
@@ -138,13 +145,21 @@
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      if (!response.ok) {
+        // Usamos el mensaje de error que nos da el backend
+        throw new Error(result.error || 'Ocurrió un error desconocido.');
+      }
 
       alert('¡Certificado emitido exitosamente!');
+      // Redirigimos al dashboard principal tras el éxito
       goto('/dashboard');
 
     } catch (err) {
-      if (err instanceof Error) alert(`Error al emitir el certificado: ${err.message}`);
+      if (err instanceof Error) {
+        alert(`Error al emitir el certificado: ${err.message}`);
+      } else {
+        alert('Ocurrió un error inesperado.');
+      }
     }
   }
   
@@ -171,7 +186,8 @@
 
 <div class="wizard-container">
   <h1>Cierre de Tarea: {data.tarea?.id_tarea_texto}</h1>
-  <a href="/task/{data.tarea?.id}" class="cancel-link">← Cancelar y Volver al Detalle</a>
+  
+  <button class="cancel-link" on:click={handleCancel}>← Cancelar y Volver al Detalle</button>
 
   <div class="stepper">
     <div class="step" class:active={currentStep >= 1}><span>1</span> Fechas</div>
@@ -374,7 +390,18 @@
 <style>
   /* Estilos completos */
   .wizard-container { max-width: 900px; margin: 2rem auto; font-family: sans-serif; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-  .cancel-link { display: inline-block; margin-bottom: 1.5rem; color: #6c757d; text-decoration: none; }
+  /* Estilo para que el botón se vea como un link */
+  .cancel-link { 
+    display: inline-block; 
+    margin-bottom: 1.5rem; 
+    color: #6c757d; 
+    text-decoration: none;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    cursor: pointer;
+  }
   .cancel-link:hover { text-decoration: underline; }
   .stepper { display: flex; justify-content: space-between; margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 1rem; }
   .step { color: #ccc; }

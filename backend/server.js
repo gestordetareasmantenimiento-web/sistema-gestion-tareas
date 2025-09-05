@@ -1,4 +1,4 @@
-// backend/server.js (Versión Final y Limpia)
+// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const db = require('./db/database');
@@ -6,11 +6,19 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs'); // ¡Importamos el módulo 'fs' (File System)!
+const { JWT_SECRET } = require('./config');
 
-// --- 1. CONFIGURACIÓN ---
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = 'este-es-un-secreto-muy-seguro-que-deberia-estar-en-un-archivo-de-configuracion';
+
+// --- ¡NUEVO! VERIFICACIÓN Y CREACIÓN DE LA CARPETA UPLOADS ---
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+  console.log('Carpeta "uploads/" creada exitosamente.');
+}
+// --- FIN DEL NUEVO BLOQUE ---
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -22,16 +30,13 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// --- 2. MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadsDir));
 
-// --- 3. RUTAS ---
-const listasRoutes = require('./routes/listasRoutes'); // <-- AÑADE ESTA LÍNEA
-app.use('/api/listas', listasRoutes); // <-- AÑADE ESTA LÍNEA
+const listasRoutes = require('./routes/listasRoutes');
+app.use('/api/listas', listasRoutes);
 
-// Rutas de Autenticación
 app.post('/api/register', async (req, res) => {
   const { nombre_completo, email, password, rol } = req.body;
   if (!email || !password || !nombre_completo || !rol) {
@@ -63,24 +68,19 @@ app.post('/api/login', (req, res) => {
 
     const payload = { 
       id: user.id, 
-      rol: user.rol.toLowerCase(), // <-- Convertimos el rol a minúsculas
+      rol: user.rol.toLowerCase(),
       id_proveedor: user.id_proveedor,
-      region: user.region // <-- AÑADE ESTA LÍNEA
+      region: user.region
     };
 
-    // 2. Usamos el payload completo para firmar el token
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
-
     res.json({ message: "Login exitoso", token });
   });
 });
 
-// Rutas de Tareas (protegidas)
 const tareaRoutes = require('./routes/tareaRoutes')(upload);
 app.use('/api/tareas', tareaRoutes);
 
-// Ruta de prueba
 app.get('/', (req, res) => { res.send('Servidor principal funcionando correctamente.'); });
 
-// --- 4. INICIAR SERVIDOR ---
 app.listen(PORT, () => { console.log(`Servidor corriendo en http://localhost:${PORT}`); });

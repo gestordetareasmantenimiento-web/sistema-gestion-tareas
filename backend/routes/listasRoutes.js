@@ -2,9 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const listasController = require('../controllers/listasController');
-const authMiddleware = require('../middleware/authMiddleware');
+// ¡CAMBIO AQUÍ! Importamos específicamente la función que necesitamos
+const { authenticateToken } = require('../middleware/authMiddleware');
 
-router.use(authMiddleware);
+// ¡CAMBIO AQUÍ! Usamos la función importada correctamente
+router.use(authenticateToken);
 
 router.get('/proveedores', listasController.getProveedoresActivos);
 router.get('/inspectores-subordinados', listasController.getInspectoresPorSupervisor);

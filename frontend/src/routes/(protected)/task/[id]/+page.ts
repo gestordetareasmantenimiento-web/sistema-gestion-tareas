@@ -1,32 +1,35 @@
-// .../task/[id]/+page.ts (Actualizado)
+// src/routes/(protected)/task/[id]/+page.ts
+
 export const load = async ({ fetch, params }) => {
   const { id } = params;
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('authToken');
-    try {
-      // Hacemos las dos peticiones en paralelo para más eficiencia
-      const [tareaRes, adjuntosRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/tareas/${id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`http://localhost:3000/api/tareas/${id}/adjuntos`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
+  
+  // Este código ahora puede ejecutarse tanto en servidor como en cliente
+  // SvelteKit se encarga de pasar `fetch` con las cookies/headers correctos
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : '';
 
-      if (!tareaRes.ok) throw new Error('No se pudo cargar la tarea.');
-      if (!adjuntosRes.ok) throw new Error('No se pudieron cargar los adjuntos.');
+    // Hacemos UNA SOLA petición a nuestro nuevo endpoint
+    const response = await fetch(`http://localhost:3000/api/tareas/${id}/certificado`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
 
-      const tareaResult = await tareaRes.json();
-      const adjuntosResult = await adjuntosRes.json();
-
-      return {
-        tarea: tareaResult.data,
-        adjuntos: adjuntosResult.data
-      };
-    } catch (error) {
-      // ... (manejo de error existente) ...
+    if (!response.ok) {
+      const errorResult = await response.json();
+      throw new Error(errorResult.error || 'No se pudieron cargar los datos de la tarea.');
     }
+
+    const result = await response.json();
+    
+    // Devolvemos todos los datos bajo una sola propiedad `certificado`
+    return {
+      certificado: result.data
+    };
+
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    return {
+      certificado: null,
+      error: message
+    };
   }
-  return { tarea: null, adjuntos: [] };
 };

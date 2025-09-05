@@ -8,12 +8,7 @@
   let proveedores: any[] = [];
   let inspectoresSubordinados: any[] = [];
   
-  // Variables para los campos del formulario
-  let direccion = '';
-  let region = '';
-  let descripcion = '';
-  let id_proveedor = '';
-  let id_inspector_asignado = '';
+  let direccion = '', region = '', descripcion = '', id_proveedor = '', id_inspector_asignado = '';
   let archivos: FileList;
 
   onMount(async () => {
@@ -24,7 +19,8 @@
     const provRes = await fetch('http://localhost:3000/api/listas/proveedores', { headers });
     if (provRes.ok) proveedores = (await provRes.json()).data;
     
-    if ($user?.rol.toLowerCase() === 'supervisor') {
+    // ¡CORREGIDO AQUÍ!
+    if ($user?.rol && $user.rol.toLowerCase() === 'supervisor') {
       const inspRes = await fetch('http://localhost:3000/api/listas/inspectores-subordinados', { headers });
       if (inspRes.ok) inspectoresSubordinados = (await inspRes.json()).data;
     }
@@ -34,34 +30,35 @@
     const token = localStorage.getItem('authToken');
     const formData = new FormData();
 
-    // Añadimos los campos de texto al FormData
     formData.append('direccion', direccion);
     formData.append('region', region);
     formData.append('descripcion', descripcion);
     formData.append('id_proveedor', id_proveedor);
     
-    const inspectorFinalId = $user?.rol.toLowerCase() === 'supervisor' ? id_inspector_asignado : String($user?.id);
+    // ¡CORREGIDO AQUÍ!
+    const inspectorFinalId = ($user?.rol && $user.rol.toLowerCase() === 'supervisor') ? id_inspector_asignado : String($user?.id);
     formData.append('id_inspector', inspectorFinalId);
 
-    // Añadimos los archivos
     if (archivos) {
       for (let i = 0; i < archivos.length; i++) {
-        formData.append('archivos', archivos[i]); // El nombre debe ser 'archivos' para coincidir con upload.array()
+        formData.append('archivos', archivos[i]);
       }
     }
     
     const response = await fetch('http://localhost:3000/api/tareas', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }, // NO se pone Content-Type, el navegador lo hace solo
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData
     });
 
     if (response.ok) {
       alert('¡Tarea creada exitosamente!');
-      invalidateAll(); // Recarga los datos del dashboard
-      dispatch('taskCreated'); // Emite el evento para cerrar el modal
+      invalidateAll();
+      dispatch('taskCreated');
     } else {
-      alert('Error al crear la tarea.');
+      // ¡MEJORA! Mostramos el error específico del backend si existe
+      const errorData = await response.json();
+      alert(`Error al crear la tarea: ${errorData.message || 'Error desconocido'}`);
     }
   }
 </script>
@@ -98,7 +95,7 @@
     </select>
   </div>
 
-  {#if $user?.rol.toLowerCase() === 'supervisor'}
+  {#if $user?.rol && $user.rol.toLowerCase() === 'supervisor'}
     <div class="form-group">
       <label for="inspector">Inspector a Cargo</label>
       <select id="inspector" bind:value={id_inspector_asignado} required>
