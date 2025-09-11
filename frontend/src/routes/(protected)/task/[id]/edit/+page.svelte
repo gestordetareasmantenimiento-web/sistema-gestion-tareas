@@ -5,7 +5,7 @@
   // Creamos variables locales para los campos del formulario,
   // inicializadas con los datos que cargamos.
   let estado = data.tarea?.estado || '';
-  let numero_icd = data.tarea?.numero_icd || '';
+  let numero_wo = data.tarea?.numero_wo || '';
   let errorMessage = '';
 
   async function handleUpdate() {
@@ -18,7 +18,7 @@
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ estado, numero_icd })
+        body: JSON.stringify({ estado, numero_wo })
       });
 
       if (!response.ok) {
@@ -45,8 +45,8 @@
       <input type="text" id="estado" bind:value={estado} />
     </div>
     <div class="form-group">
-      <label for="icd">Número de ICD</label>
-      <input type="text" id="icd" bind:value={numero_icd} />
+      <label for="wo">Número de WO</label>
+      <input type="text" id="wo" bind:value={numero_wo} />
     </div>
     {#if errorMessage}
       <p class="error">{errorMessage}</p>

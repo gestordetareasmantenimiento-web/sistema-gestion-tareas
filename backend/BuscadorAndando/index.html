@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Zonas</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div class="search-card">
+            <h1>Buscador por Dirección</h1>
+            <p>Ingresa una dirección de CABA para encontrar su clasificación.</p>
+            <div class="search-box">
+                <input type="text" id="addressInput" placeholder="Ej: Av. Rivadavia 4550" autocomplete="off">
+                <button id="addressSearchButton">Buscar</button>
+            </div>
+            <div id="addressResults" class="results-container">
+                 <div class="info">Ingresa una dirección para comenzar.</div>
+            </div>
+        </div>
+
+        <div class="search-card">
+            <h1>Buscador por Zona Operativa</h1>
+            <p>Ingresa el nombre de una Zona Operativa para ver su detalle.</p>
+            <div class="search-box">
+                <input type="text" id="zoneInput" placeholder="Ej: AGU131A" autocomplete="off">
+                <button id="zoneSearchButton">Buscar</button>
+            </div>
+            <div id="zoneResults" class="results-container">
+                 <div class="info">Ingresa una Zona Operativa para buscar.</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="zonasOperativas.js"></script>
+    <script src="subregiones.js"></script>
+    <script src="script.js"></script>
+
+</body>
+</html>

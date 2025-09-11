@@ -1,35 +1,84 @@
 // src/routes/(protected)/task/[id]/+page.ts
 
-export const load = async ({ fetch, params }) => {
+// Deshabilitar SSR para esta página para evitar problemas con localStorage
+export const ssr = false;
+
+export const load = async ({ fetch, params, cookies, url }) => {
   const { id } = params;
   
-  // Este código ahora puede ejecutarse tanto en servidor como en cliente
-  // SvelteKit se encarga de pasar `fetch` con las cookies/headers correctos
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : '';
+    // Obtener el token del localStorage (siempre en cliente con ssr = false)
+    const token = localStorage.getItem('authToken') || '';
+    
+    if (!token) {
+      return {
+        certificado: null,
+        error: 'No se encontró token de autenticación. Por favor, inicia sesión nuevamente.'
+      };
+    }
 
-    // Hacemos UNA SOLA petición a nuestro nuevo endpoint
+    // Hacemos petición para obtener los datos completos del certificado
     const response = await fetch(`http://localhost:3000/api/tareas/${id}/certificado`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
 
     if (!response.ok) {
-      const errorResult = await response.json();
-      throw new Error(errorResult.error || 'No se pudieron cargar los datos de la tarea.');
+      let errorMessage = 'Error al cargar los datos de la tarea.';
+      
+      try {
+        const errorResult = await response.json();
+        errorMessage = errorResult.error || errorMessage;
+      } catch (parseError) {
+        // Si no se puede parsear el error, usar mensaje genérico
+        if (response.status === 404) {
+          errorMessage = 'Tarea no encontrada.';
+        } else if (response.status === 500) {
+          errorMessage = 'Error interno del servidor.';
+        } else if (response.status === 401) {
+          errorMessage = 'No autorizado. Por favor, inicia sesión nuevamente.';
+        }
+      }
+      
+      return {
+        certificado: null,
+        error: errorMessage
+      };
     }
 
     const result = await response.json();
     
-    // Devolvemos todos los datos bajo una sola propiedad `certificado`
+    // Verificar que los datos sean válidos
+    if (!result.data) {
+      return {
+        certificado: null,
+        error: 'Los datos de la tarea están vacíos o son inválidos.'
+      };
+    }
+    
+    // Devolvemos los datos de la tarea como certificado para mantener compatibilidad
     return {
       certificado: result.data
     };
 
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
+    console.error('Error en load function:', error);
+    
+    let errorMessage = 'Error desconocido al cargar la tarea.';
+    
+    if (error instanceof Error) {
+      if (error.message.includes('fetch')) {
+        errorMessage = 'No se pudo conectar con el servidor. Verifica que el backend esté ejecutándose.';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     return {
       certificado: null,
-      error: message
+      error: errorMessage
     };
   }
 };

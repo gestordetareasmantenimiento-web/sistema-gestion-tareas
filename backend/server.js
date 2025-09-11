@@ -6,36 +6,55 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs'); // ¡Importamos el módulo 'fs' (File System)!
-const { JWT_SECRET } = require('./config');
+const fs = require('fs');
+const { JWT_SECRET, PORT, UPLOADS_DIR, MAX_FILE_SIZE, ALLOWED_FILE_TYPES } = require('./config');
 
 const app = express();
-const PORT = 3000;
 
-// --- ¡NUEVO! VERIFICACIÓN Y CREACIÓN DE LA CARPETA UPLOADS ---
-const uploadsDir = path.join(__dirname, 'uploads');
+// Verificación y creación de la carpeta uploads
+const uploadsDir = path.join(__dirname, UPLOADS_DIR);
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-  console.log('Carpeta "uploads/" creada exitosamente.');
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log(`Carpeta "${UPLOADS_DIR}/" creada exitosamente.`);
 }
-// --- FIN DEL NUEVO BLOQUE ---
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage: storage });
+
+// Configuración de multer con validaciones
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: MAX_FILE_SIZE
+  },
+  fileFilter: function (req, file, cb) {
+    if (ALLOWED_FILE_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Tipo de archivo no permitido. Tipos permitidos: ${ALLOWED_FILE_TYPES.join(', ')}`), false);
+    }
+  }
+});
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(uploadsDir));
+// Configurar archivos estáticos con headers para forzar descarga
+app.use('/uploads', (req, res, next) => {
+  // Agregar header para forzar descarga
+  res.setHeader('Content-Disposition', 'attachment');
+  next();
+}, express.static(uploadsDir));
 
 const listasRoutes = require('./routes/listasRoutes');
+const userRoutes = require('./routes/userRoutes');
 app.use('/api/listas', listasRoutes);
+app.use('/api/user', userRoutes);
 
 app.post('/api/register', async (req, res) => {
   const { nombre_completo, email, password, rol } = req.body;
@@ -49,7 +68,8 @@ app.post('/api/register', async (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       res.status(201).json({ message: "Usuario creado", id: this.lastID });
     });
-  } catch {
+  } catch (error) {
+    console.error('Error al hashear la contraseña:', error);
     res.status(500).json({ error: "Error al hashear la contraseña." });
   }
 });
@@ -80,6 +100,13 @@ app.post('/api/login', (req, res) => {
 
 const tareaRoutes = require('./routes/tareaRoutes')(upload);
 app.use('/api/tareas', tareaRoutes);
+
+const superadminRoutes = require('./routes/superadminRoutes');
+app.use('/api/superadmin', superadminRoutes);
+
+const regionRoutes = require('./routes/regionRoutes');
+app.use('/api/regiones', regionRoutes);
+
 
 app.get('/', (req, res) => { res.send('Servidor principal funcionando correctamente.'); });
 

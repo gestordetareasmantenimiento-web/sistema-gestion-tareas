@@ -1,5 +1,5 @@
 <script lang="ts">
-  import TaskCard from '$lib/components/TaskCard.svelte';
+  import TaskTable from '$lib/components/TaskTable.svelte';
   import Modal from '$lib/components/Modal.svelte';
   import CreateTaskForm from '$lib/components/CreateTaskForm.svelte';
   import { user } from '$lib/stores/auth';
@@ -7,28 +7,50 @@
 
   let showCreateModal = false;
 
-  const ROLES_CON_PERMISO_DE_CREAR = [
-    'inspector', 'supervisor', 'supervisor de disponibilidad',
-    'supervisor de soporte', 'supervisor de provision'
+  const supervisorRoles = [
+    'supervisor de mantenimiento',
+    'supervisor de disponibilidad',
+    'supervisor de soporte',
+    'supervisor de provision'
   ];
 
-  const ROLES_TIPO_INSPECTOR = [
-    'inspector', 'supervisor de disponibilidad',
-    'supervisor de soporte', 'supervisor de provision'
-  ];
-
-  // Variables reactivas para determinar la vista a mostrar
   $: userRol = $user?.rol.toLowerCase();
-  $: esVistaInspector = userRol && ROLES_TIPO_INSPECTOR.includes(userRol);
-  $: esVistaAdmin = userRol === 'administrativo';
-
+  
+  // Combinar todas las tareas de todas las columnas
+  $: todasLasTareas = [
+    ...(data.columnas?.pendientes || []),
+    ...(data.columnas?.pendientesDeCertificacion || []),
+    ...(data.columnas?.aprobados || []),
+    ...(data.columnas?.observados || [])
+  ];
+  
+  // Manejar acciones de la tabla
+  function handleTaskAction(event: CustomEvent) {
+    const { tarea, accion } = event.detail;
+    console.log('Acción:', accion, 'Tarea:', tarea.id);
+    
+    // Aquí puedes implementar la lógica para cada acción
+    switch (accion) {
+      case 'view':
+        window.location.href = `/task/${tarea.id}`;
+        break;
+      case 'certify':
+        // Implementar lógica de certificación
+        console.log('Certificando tarea:', tarea.id);
+        break;
+    }
+  }
 </script>
+
+<svelte:window on:taskAction={handleTaskAction} />
 
 <div class="header">
   <h1>Panel Principal</h1>
-  {#if $user && ROLES_CON_PERMISO_DE_CREAR.includes(userRol)}
-    <button class="create-button" on:click={() => showCreateModal = true}>+ Crear Tarea</button>
-  {/if}
+  <div class="header-actions">
+    {#if userRol === 'inspector'}
+      <button class="create-button" on:click={() => showCreateModal = true}>+ Crear Tarea</button>
+    {/if}
+  </div>
 </div>
 
 {#if showCreateModal}
@@ -41,154 +63,12 @@
   <p class="error">{data.error}</p>
 {/if}
 
-<div class="kanban-board">
-
-  {#if esVistaInspector}
-    <div class="kanban-column">
-      <h2 class="column-title pendiente">Pendientes</h2>
-      <div class="column-content">
-        {#each data.columnas.pendientes || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title en-aprobacion">Pendientes de Certificación</h2>
-      <div class="column-content">
-        {#each data.columnas.pendientesDeCertificacion || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title aprobados">Aprobados (En Circuito)</h2>
-      <div class="column-content">
-        {#each data.columnas.aprobados || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title observado">Observados</h2>
-      <div class="column-content">
-        {#each data.columnas.observados || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title pasado-a-pago">Pasados a Pago</h2>
-      <div class="column-content">
-        {#each data.columnas.pasadasAPago || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-
-  {:else if esVistaAdmin}
-    <div class="kanban-column">
-      <h2 class="column-title pendiente">Pendientes de Asignación de ICD</h2>
-      <div class="column-content">
-        {#each data.columnas.pendientesDeIcd || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title en-aprobacion">Pendientes de Revisión</h2>
-      <div class="column-content">
-        {#each data.columnas.pendientesDeRevision || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title observado">Observados</h2>
-      <div class="column-content">
-        {#each data.columnas.observados || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title pasado-a-pago">Pasados a Pago</h2>
-      <div class="column-content">
-        {#each data.columnas.pasadasAPago || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-
-  {:else if userRol === 'supervisor'}
-    <div class="kanban-column">
-      <h2 class="column-title en-aprobacion">Pendientes de Aprobación</h2>
-      <div class="column-content">
-        {#each data.columnas.pendientesDeAprobacion || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title pendiente">Pendientes de Certificación (Inspectores)</h2>
-      <div class="column-content">
-        {#each data.columnas.pendientesDeCertificacion || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title aprobados">Tareas en Circuito</h2>
-      <div class="column-content">
-        {#each data.columnas.enCircuito || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title observado">Tareas Observadas (Inspectores)</h2>
-      <div class="column-content">
-        {#each data.columnas.observados || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-
-  {:else}
-    <div class="kanban-column">
-      <h2 class="column-title pendiente">Pendientes</h2>
-      <div class="column-content">
-        {#each data.columnas.pendientes || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title en-aprobacion">Cerrados En Aprobación</h2>
-      <div class="column-content">
-        {#each data.columnas.enAprobacion || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title observado">Observados</h2>
-      <div class="column-content">
-        {#each data.columnas.observados || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-    <div class="kanban-column">
-      <h2 class="column-title pasado-a-pago">Pasados a Pago</h2>
-      <div class="column-content">
-        {#each data.columnas.pasadasAPago || [] as tarea (tarea.id)}
-          <TaskCard {tarea} userRole={userRol} />
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-</div>
+<!-- Nueva tabla con filtros -->
+<TaskTable 
+  tareas={todasLasTareas} 
+  userRole={userRol} 
+  loading={false}
+/>
 
 <style>
   .header {
@@ -197,6 +77,12 @@
     align-items: center;
     margin-bottom: 1rem;
     padding: 0 1rem;
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
   }
   .create-button {
     background-color: #007bff;
@@ -210,13 +96,20 @@
   .create-button:hover {
     background-color: #0056b3;
   }
-  .kanban-board { display: flex; gap: 1rem; overflow-x: auto; padding: 1rem; min-height: 70vh; }
-  .kanban-column { flex: 1; min-width: 300px; background-color: #e9ecef; border-radius: 8px; padding: 0.5rem; }
-  .column-title { padding: 0.5rem; text-align: center; color: white; border-radius: 4px; font-size: 1rem; }
-  .column-content { padding: 0.5rem; min-height: 100px; }
-  .pendiente { background-color: #ffc107; color: black; }
-  .en-aprobacion { background-color: #6f42c1; }
-  .observado { background-color: #fd7e14; }
-  .pasado-a-pago { background-color: #28a745; }
-  .aprobados { background-color: #17a2b8; }
+  
+  
+  .header h1 {
+    margin: 0;
+    color: #333;
+    font-size: 1.8rem;
+  }
+
+  .error { 
+    color: #dc3545;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin: 0 1rem 1rem 1rem;
+  }
 </style>

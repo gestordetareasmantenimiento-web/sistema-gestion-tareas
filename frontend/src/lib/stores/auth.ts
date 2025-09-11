@@ -38,6 +38,8 @@ export function syncAuth() {
 export function login(token: string) {
   if (browser) {
     localStorage.setItem('authToken', token);
+    // También guardar en cookies para SSR
+    document.cookie = `authToken=${token}; path=/; max-age=86400; SameSite=Lax`;
     syncAuth(); // Sincronizamos el store con el nuevo token
   }
 }
@@ -46,6 +48,8 @@ export function login(token: string) {
 export function logout() {
   if (browser) {
     localStorage.removeItem('authToken');
+    // También eliminar de cookies
+    document.cookie = 'authToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     user.set(null);
   }
 }
