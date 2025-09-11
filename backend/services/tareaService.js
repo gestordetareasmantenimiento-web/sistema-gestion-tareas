@@ -362,9 +362,9 @@ const getCertificadoByTareaId = async (req, res) => {
     });
     const materialesPromise = new Promise((resolve, reject) => {
       const sql = `
-        SELECT tm.id, tm.cantidad, tm.tipo, m.codigo, m.descripcion
+        SELECT tm.id, tm.cantidad, tm.tipo, m.codigo, m.descripcion, m.unidad_medida
         FROM tarea_materiales tm
-        JOIN materiales m ON tm.id_material = m.id
+        JOIN materiales m ON tm.id_material = m.codigo
         WHERE tm.id_tarea = ?`;
       db.all(sql, [id_tarea], (err, rows) => err ? reject(err) : resolve(rows));
     });
@@ -415,12 +415,15 @@ const getCertificadoByTareaId = async (req, res) => {
 const emitirCertificado = async (req, res) => {
   try {
     const { id } = req.params;
-    const { formData } = req.body;
     const id_usuario = req.user.id;
     
-    // Parsear los datos del certificado
-    const datosCertificado = JSON.parse(formData);
-    const { fecha_inicio, fecha_fin, mano_de_obra, materiales_utilizados, materiales_recuperados } = datosCertificado;
+    // Extraer datos del FormData
+    const fecha_inicio = req.body.fecha_inicio;
+    const fecha_fin = req.body.fecha_fin;
+    const observaciones = req.body.observaciones || '';
+    const mano_de_obra = JSON.parse(req.body.mano_de_obra || '[]');
+    const materiales_utilizados = JSON.parse(req.body.materiales_utilizados || '[]');
+    const materiales_recuperados = JSON.parse(req.body.materiales_recuperados || '[]');
     
     // Validar datos obligatorios
     if (!fecha_inicio || !fecha_fin) {

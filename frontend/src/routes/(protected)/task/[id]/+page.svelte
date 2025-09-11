@@ -670,8 +670,8 @@
           <p class="no-files">No hay archivos adjuntos para esta tarea.</p>
         {/if}
         
-        <!-- Sección de subida de nuevos archivos (solo para proveedores en estados permitidos) -->
-        {#if userRol === 'proveedor' && (certificado.tarea.estado === 'Asignada' || certificado.tarea.estado.includes('Observada'))}
+        <!-- Sección de subida de nuevos archivos (solo para proveedores en certificación) -->
+        {#if userRol === 'proveedor' && certificado.tarea.estado === 'Pendiente Certificación Inspector'}
           <div class="upload-section">
             <h4>📤 Subir nuevos archivos</h4>
           
@@ -808,7 +808,14 @@
   .cerco-panel h3 { color: #c41d7f; }
 
   /* --- Estilos Generales --- */
-  .detalle-container { font-family: sans-serif; max-width: 900px; margin: 2rem auto; }
+  .detalle-container { 
+    font-family: sans-serif; 
+    max-width: 900px; 
+    margin: 2rem auto; 
+    padding: 0 1rem;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
   .back-link { text-decoration: none; color: #007bff; margin-bottom: 2rem; display: inline-block; background: none; border: none; padding: 0; font-size: inherit; font-family: inherit; cursor: pointer; }
   .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
   .actions { display: flex; gap: 0.5rem; }
@@ -1163,5 +1170,35 @@
   /* Separación para el panel de WO */
   .wo-panel {
     margin-top: 2rem;
+  }
+  
+  /* Mejoras para scroll y responsive */
+  @media (max-width: 768px) {
+    .detalle-container {
+      margin: 1rem auto;
+      padding: 0 0.5rem;
+    }
+    
+    .info-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    
+    .header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    
+    .actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+  
+  /* Asegurar que el body pueda hacer scroll */
+  :global(body) {
+    overflow-x: hidden;
   }
 </style>

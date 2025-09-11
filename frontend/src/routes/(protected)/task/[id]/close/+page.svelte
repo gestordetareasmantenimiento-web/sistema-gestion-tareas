@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { onMount, onDestroy } from 'svelte';
   import VerticalCertificationForm from '$lib/components/VerticalCertificationForm.svelte';
+  import { user } from '$lib/stores/auth';
   export let data;
 
   // --- Estado del Formulario ---
@@ -74,8 +75,21 @@
         })
       ]);
 
-      listaManoDeObra = manoDeObraResponse.ok ? await manoDeObraResponse.json() : [];
-      listaMateriales = materialesResponse.ok ? await materialesResponse.json() : [];
+      if (manoDeObraResponse.ok) {
+        const manoDeObraData = await manoDeObraResponse.json();
+        listaManoDeObra = manoDeObraData.data || [];
+        console.log('✅ Mano de obra cargada:', listaManoDeObra.length, 'elementos');
+      } else {
+        console.error('❌ Error cargando mano de obra:', manoDeObraResponse.status);
+      }
+      
+      if (materialesResponse.ok) {
+        const materialesData = await materialesResponse.json();
+        listaMateriales = materialesData.data || [];
+        console.log('✅ Materiales cargados:', listaMateriales.length, 'elementos');
+      } else {
+        console.error('❌ Error cargando materiales:', materialesResponse.status);
+      }
       
       loading = false;
     } catch (err) {
@@ -89,9 +103,49 @@
   function handleCertificadoEmitido(event: CustomEvent) {
     console.log('Certificado emitido:', event.detail);
     showCertificationForm = false;
-    // Redirigir al dashboard después de un breve delay
+    
+    // Redirigir al dashboard correcto según el rol del usuario
     setTimeout(() => {
-      goto('/dashboard');
+      // Obtener el rol del usuario desde el store
+      let userRole = '';
+      const unsubscribe = user.subscribe(currentUser => {
+        if (currentUser) {
+          userRole = currentUser.rol;
+        }
+      });
+      unsubscribe(); // Limpiar la suscripción inmediatamente
+      
+      // Determinar el dashboard correcto según el rol
+      let dashboardPath = '/dashboard'; // fallback por defecto
+      
+      switch (userRole) {
+        case 'proveedor':
+          dashboardPath = '/proveedor';
+          break;
+        case 'inspector':
+          dashboardPath = '/inspector';
+          break;
+        case 'supervisor_mantenimiento':
+          dashboardPath = '/supervisor';
+          break;
+        case 'supervisor_obra':
+          dashboardPath = '/supervisor';
+          break;
+        case 'administrativo':
+          dashboardPath = '/admin';
+          break;
+        case 'gerente':
+          dashboardPath = '/gerente';
+          break;
+        case 'cerco':
+          dashboardPath = '/cerco';
+          break;
+        default:
+          dashboardPath = '/dashboard';
+      }
+      
+      console.log(`Redirigiendo a dashboard para rol ${userRole}: ${dashboardPath}`);
+      goto(dashboardPath);
     }, 2000);
   }
   

@@ -12,6 +12,7 @@
   const dispatch = createEventDispatcher();
   
   
+  
   function handleConfirm() {
     dispatch('confirm');
     closeModal();
@@ -92,17 +93,19 @@
 
 <style>
   .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999999 !important;
+    padding: 1rem !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
   
   .modal-content {

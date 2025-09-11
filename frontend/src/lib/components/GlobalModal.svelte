@@ -2,6 +2,7 @@
   import { modalStore, closeModal } from '../services/modalService';
   import CustomModal from './CustomModal.svelte';
   
+  
   function handleConfirm() {
     closeModal(true);
   }
