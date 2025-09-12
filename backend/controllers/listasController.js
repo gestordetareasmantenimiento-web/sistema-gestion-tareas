@@ -64,6 +64,7 @@ exports.getMateriales = (req, res) => {
 // ========== FAVORITOS MANO DE OBRA ==========
 exports.getFavoritosManoDeObra = (req, res) => {
   const usuarioId = req.user.id;
+  console.log('🔍 getFavoritosManoDeObra - usuarioId:', usuarioId);
   const sql = `
     SELECT codigo_mano_obra as codigo, descripcion, unidad_medida, precio, id
     FROM favoritos_mano_obra 
@@ -71,7 +72,11 @@ exports.getFavoritosManoDeObra = (req, res) => {
     ORDER BY fecha_agregado DESC
   `;
   db.all(sql, [usuarioId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('❌ Error en getFavoritosManoDeObra:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    console.log('⭐ Favoritos encontrados para usuario', usuarioId, ':', rows.length, 'items');
     res.json({ message: "success", data: rows });
   });
 };

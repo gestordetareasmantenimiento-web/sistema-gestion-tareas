@@ -179,24 +179,55 @@
   
   // Cargar datos si están vacíos
   onMount(async () => {
-    if (manoDeObra.length === 0 || materiales.length === 0) {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        try {
-          const [manoDeObraResponse, materialesResponse, favoritosManoDeObraResponse, favoritosMaterialesUtilizadosResponse, favoritosMaterialesRecuperadosResponse] = await Promise.all([
+    const token = localStorage.getItem('authToken');
+    console.log('🔑 Token encontrado:', token ? 'Sí' : 'No');
+    
+    if (token) {
+      try {
+        // Cargar favoritos siempre (independientemente de si ya se cargaron mano de obra y materiales)
+        console.log('🔄 Cargando favoritos...');
+        const [favoritosManoDeObraResponse, favoritosMaterialesUtilizadosResponse, favoritosMaterialesRecuperadosResponse] = await Promise.all([
+          fetch('http://localhost:3000/api/listas/favoritos/mano-de-obra', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('http://localhost:3000/api/listas/favoritos/materiales-utilizados', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('http://localhost:3000/api/listas/favoritos/materiales-recuperados', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        console.log('🔍 Favoritos mano de obra response status:', favoritosManoDeObraResponse.status);
+        if (favoritosManoDeObraResponse.ok) {
+          const favoritosData = await favoritosManoDeObraResponse.json();
+          console.log('🔍 Favoritos mano de obra response:', favoritosData);
+          favoritos = favoritosData.data || [];
+          console.log('⭐ Favoritos cargados:', favoritos);
+          console.log('⭐ Cantidad de favoritos:', favoritos.length);
+        } else {
+          const errorText = await favoritosManoDeObraResponse.text();
+          console.error('❌ Error cargando favoritos mano de obra:', favoritosManoDeObraResponse.status, favoritosManoDeObraResponse.statusText, errorText);
+        }
+
+        if (favoritosMaterialesUtilizadosResponse.ok) {
+          const favoritosMaterialesUtilizadosData = await favoritosMaterialesUtilizadosResponse.json();
+          favoritosMaterialesUtilizados = favoritosMaterialesUtilizadosData.data || [];
+        }
+
+        if (favoritosMaterialesRecuperadosResponse.ok) {
+          const favoritosMaterialesRecuperadosData = await favoritosMaterialesRecuperadosResponse.json();
+          favoritosMaterialesRecuperados = favoritosMaterialesRecuperadosData.data || [];
+        }
+
+        // Cargar mano de obra y materiales solo si están vacíos
+        if (manoDeObra.length === 0 || materiales.length === 0) {
+          console.log('🔄 Cargando mano de obra y materiales...');
+          const [manoDeObraResponse, materialesResponse] = await Promise.all([
             fetch('http://localhost:3000/api/listas/mano-de-obra', {
               headers: { 'Authorization': `Bearer ${token}` }
             }),
             fetch('http://localhost:3000/api/listas/materiales', {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }),
-            fetch('http://localhost:3000/api/listas/favoritos/mano-de-obra', {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }),
-            fetch('http://localhost:3000/api/listas/favoritos/materiales-utilizados', {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }),
-            fetch('http://localhost:3000/api/listas/favoritos/materiales-recuperados', {
               headers: { 'Authorization': `Bearer ${token}` }
             })
           ]);
@@ -210,24 +241,9 @@
             const materialesData = await materialesResponse.json();
             materiales = materialesData.data || [];
           }
-
-          if (favoritosManoDeObraResponse.ok) {
-            const favoritosData = await favoritosManoDeObraResponse.json();
-            favoritos = favoritosData.data || [];
-          }
-
-          if (favoritosMaterialesUtilizadosResponse.ok) {
-            const favoritosMaterialesUtilizadosData = await favoritosMaterialesUtilizadosResponse.json();
-            favoritosMaterialesUtilizados = favoritosMaterialesUtilizadosData.data || [];
-          }
-
-          if (favoritosMaterialesRecuperadosResponse.ok) {
-            const favoritosMaterialesRecuperadosData = await favoritosMaterialesRecuperadosResponse.json();
-            favoritosMaterialesRecuperados = favoritosMaterialesRecuperadosData.data || [];
-          }
-        } catch (error) {
-          console.error('Error cargando listas:', error);
         }
+      } catch (error) {
+        console.error('Error cargando listas:', error);
       }
     }
     
@@ -390,23 +406,24 @@
     const token = localStorage.getItem('authToken');
     if (!token) return;
 
-    const identifier = codigo.id || codigo.codigo;
-    const isCurrentlyFavorito = favoritos.some(f => (f.id || f.codigo) === identifier);
+    // Usar siempre codigo.codigo para la identificación
+    const codigoIdentificador = codigo.codigo;
+    const isCurrentlyFavorito = favoritos.some(f => f.codigo === codigoIdentificador);
 
-    console.log('🔍 toggleFavorito:', { codigo, identifier, isCurrentlyFavorito });
+    console.log('🔍 toggleFavorito:', { codigo, codigoIdentificador, isCurrentlyFavorito });
 
     try {
       if (isCurrentlyFavorito) {
         // Quitar de favoritos
         console.log('🗑️ Quitando de favoritos...');
-        const response = await fetch(`http://localhost:3000/api/listas/favoritos/mano-de-obra/${identifier}`, {
+        const response = await fetch(`http://localhost:3000/api/listas/favoritos/mano-de-obra/${codigoIdentificador}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
         console.log('🗑️ Response status:', response.status);
         if (response.ok) {
-          favoritos = favoritos.filter(f => (f.id || f.codigo) !== identifier);
+          favoritos = favoritos.filter(f => f.codigo !== codigoIdentificador);
           console.log('✅ Favorito quitado exitosamente');
         } else {
           const errorText = await response.text();
@@ -431,7 +448,7 @@
         
         console.log('⭐ Response status:', response.status);
         if (response.ok) {
-          favoritos = [...favoritos, { ...codigo, id: identifier }];
+          favoritos = [...favoritos, { ...codigo, codigo: codigoIdentificador }];
           console.log('✅ Favorito agregado exitosamente');
         } else {
           const errorText = await response.text();
@@ -444,8 +461,8 @@
   }
   
   function isFavorito(codigo: any) {
-    const identifier = codigo.id || codigo.codigo;
-    return favoritos.some(f => (f.id || f.codigo) === identifier);
+    const codigoIdentificador = codigo.codigo;
+    return favoritos.some(f => f.codigo === codigoIdentificador);
   }
   
   // Funciones para manejar materiales
@@ -556,18 +573,18 @@
     const token = localStorage.getItem('authToken');
     if (!token) return;
 
-    const identifier = material.id || material.codigo;
-    const isCurrentlyFavorito = favoritosMaterialesUtilizados.some(f => (f.id || f.codigo) === identifier);
+    const codigoIdentificador = material.codigo;
+    const isCurrentlyFavorito = favoritosMaterialesUtilizados.some(f => f.codigo === codigoIdentificador);
 
     try {
       if (isCurrentlyFavorito) {
-        const response = await fetch(`http://localhost:3000/api/listas/favoritos/materiales-utilizados/${identifier}`, {
+        const response = await fetch(`http://localhost:3000/api/listas/favoritos/materiales-utilizados/${codigoIdentificador}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (response.ok) {
-          favoritosMaterialesUtilizados = favoritosMaterialesUtilizados.filter(f => (f.id || f.codigo) !== identifier);
+          favoritosMaterialesUtilizados = favoritosMaterialesUtilizados.filter(f => f.codigo !== codigoIdentificador);
         }
       } else {
         const response = await fetch('http://localhost:3000/api/listas/favoritos/materiales-utilizados', {
@@ -584,7 +601,7 @@
         });
         
         if (response.ok) {
-          favoritosMaterialesUtilizados = [...favoritosMaterialesUtilizados, { ...material, id: identifier }];
+          favoritosMaterialesUtilizados = [...favoritosMaterialesUtilizados, { ...material, codigo: codigoIdentificador }];
         }
       }
     } catch (error) {
@@ -597,18 +614,18 @@
     const token = localStorage.getItem('authToken');
     if (!token) return;
 
-    const identifier = material.id || material.codigo;
-    const isCurrentlyFavorito = favoritosMaterialesRecuperados.some(f => (f.id || f.codigo) === identifier);
+    const codigoIdentificador = material.codigo;
+    const isCurrentlyFavorito = favoritosMaterialesRecuperados.some(f => f.codigo === codigoIdentificador);
 
     try {
       if (isCurrentlyFavorito) {
-        const response = await fetch(`http://localhost:3000/api/listas/favoritos/materiales-recuperados/${identifier}`, {
+        const response = await fetch(`http://localhost:3000/api/listas/favoritos/materiales-recuperados/${codigoIdentificador}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (response.ok) {
-          favoritosMaterialesRecuperados = favoritosMaterialesRecuperados.filter(f => (f.id || f.codigo) !== identifier);
+          favoritosMaterialesRecuperados = favoritosMaterialesRecuperados.filter(f => f.codigo !== codigoIdentificador);
         }
       } else {
         const response = await fetch('http://localhost:3000/api/listas/favoritos/materiales-recuperados', {
@@ -625,7 +642,7 @@
         });
         
         if (response.ok) {
-          favoritosMaterialesRecuperados = [...favoritosMaterialesRecuperados, { ...material, id: identifier }];
+          favoritosMaterialesRecuperados = [...favoritosMaterialesRecuperados, { ...material, codigo: codigoIdentificador }];
         }
       }
     } catch (error) {
@@ -634,13 +651,13 @@
   }
   
   function isFavoritoMaterialUtilizado(material: any) {
-    const identifier = material.id || material.codigo;
-    return favoritosMaterialesUtilizados.some(f => (f.id || f.codigo) === identifier);
+    const codigoIdentificador = material.codigo;
+    return favoritosMaterialesUtilizados.some(f => f.codigo === codigoIdentificador);
   }
 
   function isFavoritoMaterialRecuperado(material: any) {
-    const identifier = material.id || material.codigo;
-    return favoritosMaterialesRecuperados.some(f => (f.id || f.codigo) === identifier);
+    const codigoIdentificador = material.codigo;
+    return favoritosMaterialesRecuperados.some(f => f.codigo === codigoIdentificador);
   }
   
   // Función para volver a la tarea
