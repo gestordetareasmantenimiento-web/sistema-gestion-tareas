@@ -32,6 +32,11 @@
   let showMaterialesUtilizadosList = false;
   let showMaterialesRecuperadosList = false;
   
+  // Estados para costo mínimo diario
+  let costoMinimoDiario = 735000;
+  let validacionCostoMinimo: any = null;
+  let isLoadingValidacion = false;
+  
   // Archivos
   let archivos: FileList | null = null;
   let archivosPreview: { name: string; type: string; size: number; previewUrl?: string }[] = [];
@@ -174,12 +179,16 @@
   function addManoDeObra(item: any) {
     const index = manoDeObraSeleccionada.findIndex(i => i.id === item.id);
     if (index === -1) {
-      manoDeObraSeleccionada = [...manoDeObraSeleccionada, { ...item, cantidad: 1 }];
+      // Para el código 5020982, siempre cantidad 1 (se calcula automáticamente)
+      const cantidadInicial = item.codigo === '5020982' ? 1 : 1;
+      manoDeObraSeleccionada = [...manoDeObraSeleccionada, { ...item, cantidad: cantidadInicial }];
+      validarCostoMinimoDiario(manoDeObraSeleccionada);
     }
   }
   
   function removeManoDeObra(itemId: number) {
     manoDeObraSeleccionada = manoDeObraSeleccionada.filter(i => i.id !== itemId);
+    validarCostoMinimoDiario(manoDeObraSeleccionada);
   }
   
   function addMaterialUtilizado(item: any) {
@@ -205,9 +214,71 @@
   }
   
   function updateCantidad(lista: any[], itemId: number, cantidad: number) {
-    return lista.map(item => 
-      item.id === itemId ? { ...item, cantidad: Math.max(1, cantidad) } : item
-    );
+    const nuevaLista = lista.map(item => {
+      // No permitir cambios en el código 5020982 (costo mínimo diario)
+      if (item.codigo === '5020982') {
+        return { ...item, cantidad: 1 }; // Siempre cantidad 1 para el cálculo automático
+      }
+      return item.id === itemId ? { ...item, cantidad: Math.max(1, cantidad) } : item;
+    });
+    
+    // Si es mano de obra, validar costo mínimo diario
+    if (lista === manoDeObraSeleccionada) {
+      validarCostoMinimoDiario(nuevaLista);
+    }
+    
+    return nuevaLista;
+  }
+  
+  // Función para validar costo mínimo diario
+  async function validarCostoMinimoDiario(manoDeObra: any[]) {
+    if (manoDeObra.length === 0) {
+      validacionCostoMinimo = null;
+      return;
+    }
+    
+    isLoadingValidacion = true;
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:3000/api/costo-minimo/validar', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ manoDeObraSeleccionada: manoDeObra })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        validacionCostoMinimo = result.data;
+      } else {
+        console.error('Error validando costo mínimo diario');
+        validacionCostoMinimo = null;
+      }
+    } catch (error) {
+      console.error('Error validando costo mínimo diario:', error);
+      validacionCostoMinimo = null;
+    } finally {
+      isLoadingValidacion = false;
+    }
+  }
+  
+  // Función para obtener el valor del costo mínimo diario
+  async function cargarCostoMinimoDiario() {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:3000/api/costo-minimo/valor', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        costoMinimoDiario = result.data.valor;
+      }
+    } catch (error) {
+      console.error('Error cargando costo mínimo diario:', error);
+    }
   }
   
   // Manejo de archivos
@@ -313,6 +384,9 @@
     if (savedMaterialesFavoritos) {
       materialesFavoritos = JSON.parse(savedMaterialesFavoritos);
     }
+    
+    // Cargar costo mínimo diario
+    cargarCostoMinimoDiario();
     
     return () => {
       archivosPreview.forEach(file => {
@@ -529,18 +603,32 @@
                       <div class="item-info">
                         <span class="item-name">{item.descripcion}</span>
                         <span class="item-unit">({item.unidad})</span>
+                        {#if item.codigo === '5020982'}
+                          <span class="auto-calculated-label">🔄 Se calcula automáticamente</span>
+                        {/if}
                       </div>
                       <div class="quantity-controls">
-                        <label>Cantidad:</label>
-                        <input 
-                          type="number" 
-                          min="1" 
-                          value={item.cantidad}
-                          on:change={(e) => {
-                            const target = e.target as HTMLInputElement;
-                            manoDeObraSeleccionada = updateCantidad(manoDeObraSeleccionada, item.id, parseInt(target.value));
-                          }}
-                        />
+                        {#if item.codigo === '5020982'}
+                          <label>Cantidad:</label>
+                          <input 
+                            type="number" 
+                            value="1"
+                            disabled
+                            class="disabled-input"
+                            title="Este valor se calcula automáticamente"
+                          />
+                        {:else}
+                          <label>Cantidad:</label>
+                          <input 
+                            type="number" 
+                            min="1" 
+                            value={item.cantidad}
+                            on:change={(e) => {
+                              const target = e.target as HTMLInputElement;
+                              manoDeObraSeleccionada = updateCantidad(manoDeObraSeleccionada, item.id, parseInt(target.value));
+                            }}
+                          />
+                        {/if}
                         <button 
                           class="remove-btn" 
                           on:click={() => removeManoDeObra(item.id)}
@@ -552,6 +640,44 @@
                     </div>
                   {/each}
                 </div>
+                
+                <!-- Validación del Costo Mínimo Diario -->
+                {#if validacionCostoMinimo}
+                  <div class="costo-minimo-validation">
+                    <h5>💰 Validación Costo Mínimo Diario</h5>
+                    {#if validacionCostoMinimo.valido}
+                      <div class="validation-success">
+                        <div class="validation-info">
+                          <p><strong>Costo mínimo diario:</strong> ${costoMinimoDiario.toLocaleString()}</p>
+                          <p><strong>Subtotal otros items:</strong> ${validacionCostoMinimo.calculo.subtotalOtrosItems.toLocaleString()}</p>
+                          {#if validacionCostoMinimo.calculo.necesitaCostoMinimo}
+                            <p class="costo-minimo-aplicado">
+                              <strong>✅ Costo mínimo diario aplicado:</strong> ${validacionCostoMinimo.calculo.diferencia.toLocaleString()}
+                            </p>
+                          {:else}
+                            <p class="no-costo-minimo">
+                              <strong>✅ No se requiere costo mínimo diario</strong>
+                            </p>
+                          {/if}
+                        </div>
+                      </div>
+                    {:else}
+                      <div class="validation-error">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-message">
+                          <p><strong>Error:</strong> {validacionCostoMinimo.error}</p>
+                          <p>Por favor, revise las cantidades o elimine el costo mínimo diario de la selección.</p>
+                        </div>
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+                
+                {#if isLoadingValidacion}
+                  <div class="loading-validation">
+                    <p>⏳ Validando costo mínimo diario...</p>
+                  </div>
+                {/if}
               {/if}
             </div>
           </div>
@@ -1540,6 +1666,105 @@
     font-size: 1rem;
     cursor: pointer;
     margin-top: 1rem;
+  }
+  
+  /* Estilos para validación del costo mínimo diario */
+  .costo-minimo-validation {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+  }
+  
+  .costo-minimo-validation h5 {
+    margin: 0 0 1rem 0;
+    color: #495057;
+    font-size: 1rem;
+  }
+  
+  .validation-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 6px;
+    padding: 1rem;
+  }
+  
+  .validation-info p {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+  }
+  
+  .costo-minimo-aplicado {
+    color: #155724;
+    font-weight: 600;
+    background: #c3e6cb;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+  }
+  
+  .no-costo-minimo {
+    color: #155724;
+    font-weight: 600;
+  }
+  
+  .validation-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    padding: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .error-icon {
+    font-size: 1.5rem;
+    color: #721c24;
+  }
+  
+  .error-message p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    color: #721c24;
+  }
+  
+  .error-message p:first-child {
+    font-weight: 600;
+  }
+  
+  .loading-validation {
+    text-align: center;
+    padding: 1rem;
+    color: #6c757d;
+    font-style: italic;
+  }
+  
+  /* Estilos para campo deshabilitado y leyenda automática */
+  .auto-calculated-label {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+    border: 1px solid #bbdefb;
+  }
+  
+  .disabled-input {
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+    cursor: not-allowed !important;
+    border: 1px solid #dee2e6 !important;
+    opacity: 0.7;
+  }
+  
+  .disabled-input:focus {
+    outline: none !important;
+    box-shadow: none !important;
   }
   
 </style>

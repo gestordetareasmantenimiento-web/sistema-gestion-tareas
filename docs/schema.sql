@@ -124,6 +124,13 @@ CREATE TABLE observaciones (
     FOREIGN KEY (id_usuario_resolutor) REFERENCES usuarios (id)
 );
 
+-- Tabla para almacenar el costo mínimo diario
+CREATE TABLE costominimodiario (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    valor REAL NOT NULL DEFAULT 0,
+    fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Insertar las 5 regiones operativas
 INSERT INTO regiones (nombre, descripcion) VALUES 
 ('GBA Norte', 'Gran Buenos Aires Norte'),
@@ -131,3 +138,16 @@ INSERT INTO regiones (nombre, descripcion) VALUES
 ('GBA Oeste', 'Gran Buenos Aires Oeste'),
 ('CABA Sur', 'Ciudad Autónoma de Buenos Aires Sur'),
 ('CABA Norte', 'Ciudad Autónoma de Buenos Aires Norte');
+
+-- Insertar el valor inicial del costo mínimo diario
+INSERT INTO costominimodiario (valor) VALUES (735000);
+
+-- Tabla para almacenar el porcentaje de cuadrilla modelo
+CREATE TABLE cuadrilla_modelo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    porcentaje REAL NOT NULL DEFAULT 40,
+    fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insertar el valor inicial del porcentaje de cuadrilla modelo (40%)
+INSERT INTO cuadrilla_modelo (porcentaje) VALUES (40);

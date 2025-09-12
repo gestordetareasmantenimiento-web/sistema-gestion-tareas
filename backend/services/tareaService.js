@@ -2,6 +2,8 @@ const db = require('../db/database');
 const { ROLES, SUPERVISOR_ROLES } = require('../utils/roles');
 const historialService = require('./historialService');
 const regionService = require('./regionService');
+const costoMinimoService = require('./costoMinimoService');
+const cuadrillaModeloService = require('./cuadrillaModeloService');
 
 // =================================================================
 // --- LÓGICA DE DATOS PRINCIPAL ---
@@ -439,12 +441,32 @@ const emitirCertificado = async (req, res) => {
       });
     });
     
-    // Guardar mano de obra
-    if (mano_de_obra && mano_de_obra.length > 0) {
-      for (const item of mano_de_obra) {
+    // Procesar mano de obra con cálculo automático del costo mínimo diario
+    let manoDeObraProcesada = mano_de_obra || [];
+    if (manoDeObraProcesada.length > 0) {
+      try {
+        const resultadoCostoMinimo = await costoMinimoService.procesarManoDeObraConCostoMinimo(manoDeObraProcesada);
+        manoDeObraProcesada = resultadoCostoMinimo.manoDeObraProcesada;
+        console.log('Costo mínimo diario:', resultadoCostoMinimo.mensaje);
+        
+        // Procesar cuadrilla modelo después del costo mínimo diario
+        const resultadoCuadrillaModelo = await cuadrillaModeloService.procesarManoDeObraConCuadrillaModelo(manoDeObraProcesada);
+        manoDeObraProcesada = resultadoCuadrillaModelo.manoDeObraProcesada;
+        console.log('Cuadrilla modelo:', resultadoCuadrillaModelo.mensaje);
+      } catch (error) {
+        console.error('Error procesando cálculos automáticos:', error);
+        return res.status(400).json({ error: error.message });
+      }
+    }
+    
+    // Guardar mano de obra procesada
+    if (manoDeObraProcesada && manoDeObraProcesada.length > 0) {
+      for (const item of manoDeObraProcesada) {
         await new Promise((resolve, reject) => {
-          const sql = `INSERT INTO tarea_mano_de_obra (id_tarea, id_mano_de_obra, cantidad) VALUES (?, ?, ?)`;
-          db.run(sql, [id, item.id, item.cantidad], function(err) {
+          // Para el costo mínimo diario, usar el precio calculado en lugar del precio original
+          const precioFinal = item.precioCalculado !== undefined ? item.precioCalculado : item.precio;
+          const sql = `INSERT INTO tarea_mano_de_obra (id_tarea, id_mano_de_obra, cantidad, precio_calculado) VALUES (?, ?, ?, ?)`;
+          db.run(sql, [id, item.id, item.cantidad, precioFinal], function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
           });

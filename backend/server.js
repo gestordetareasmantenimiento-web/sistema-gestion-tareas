@@ -107,6 +107,12 @@ app.use('/api/superadmin', superadminRoutes);
 const regionRoutes = require('./routes/regionRoutes');
 app.use('/api/regiones', regionRoutes);
 
+const costoMinimoRoutes = require('./routes/costoMinimoRoutes');
+app.use('/api/costo-minimo', costoMinimoRoutes);
+
+const cuadrillaModeloRoutes = require('./routes/cuadrillaModeloRoutes');
+app.use('/api/cuadrilla-modelo', cuadrillaModeloRoutes);
+
 
 app.get('/', (req, res) => { res.send('Servidor principal funcionando correctamente.'); });
 
