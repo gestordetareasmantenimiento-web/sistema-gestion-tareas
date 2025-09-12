@@ -29,12 +29,12 @@
   
   // Estados para buscador y favoritos
   let searchTerm = '';
-  let activeTab = 'general'; // 'general' o 'favoritos'
+  let activeTab = 'favoritos'; // 'general' o 'favoritos' - por defecto favoritos
   let favoritos: any[] = [];
   
   // Estados para buscador de materiales
   let searchTermMateriales = '';
-  let activeTabMateriales = 'general'; // 'general' o 'favoritos'
+  let activeTabMateriales = 'favoritos'; // 'general' o 'favoritos' - por defecto favoritos
   let favoritosMaterialesUtilizados: any[] = [];
   let favoritosMaterialesRecuperados: any[] = [];
   
@@ -675,6 +675,56 @@
     }
   }
 
+  // Función para volver al dashboard según el rol del usuario
+  function handleBackToDashboard() {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        // Decodificar el token para obtener el rol del usuario
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const userRole = payload.rol;
+        
+        console.log('🔍 Usuario rol:', userRole);
+        
+        // Navegar al dashboard correspondiente según el rol
+        switch (userRole) {
+          case 'proveedor':
+            window.location.href = '/proveedor';
+            break;
+          case 'inspector':
+            window.location.href = '/inspector';
+            break;
+          case 'supervisor de mantenimiento':
+            window.location.href = '/supervisor';
+            break;
+          case 'supervisor de disponibilidad':
+          case 'supervisor de soporte':
+          case 'supervisor de provisión':
+            window.location.href = '/supervisor';
+            break;
+          case 'administrativo':
+            window.location.href = '/admin';
+            break;
+          case 'gerente':
+            window.location.href = '/gerente';
+            break;
+          case 'cerco':
+            window.location.href = '/cerco';
+            break;
+          default:
+            console.warn('Rol no reconocido:', userRole);
+            window.location.href = '/';
+        }
+      } else {
+        console.error('No token found');
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Error al navegar al dashboard:', error);
+      window.location.href = '/';
+    }
+  }
+
   // Función para enviar certificado
   async function submitCertificado() {
     isSubmitting = true;
@@ -739,6 +789,8 @@
       const token = localStorage.getItem('authToken');
       const tareaId = tarea.id || taskId;
       console.log('🔍 ID de tarea para certificar:', tareaId);
+      console.log('🚀 Enviando certificado...', { tareaId, token: token ? 'Presente' : 'Ausente' });
+      
       const response = await fetch(`http://localhost:3000/api/tareas/${tareaId}/emitir-certificado`, {
         method: 'POST',
         headers: {
@@ -747,12 +799,18 @@
         body: formData
       });
       
+      console.log('📡 Respuesta del servidor:', response.status, response.statusText);
+      
       if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Certificado emitido exitosamente:', result);
         showSuccessModal = true;
         // Usar tareaId que ya tenemos disponible
         dispatch('certificadoEmitido', { tarea: tareaId });
       } else {
-        throw new Error('Error al enviar certificado');
+        const errorText = await response.text();
+        console.error('❌ Error del servidor:', response.status, response.statusText, errorText);
+        throw new Error(`Error al enviar certificado: ${response.status} - ${errorText}`);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -775,7 +833,7 @@
       <div class="success-icon">🎉</div>
       <h2>¡Certificado Emitido Exitosamente!</h2>
       <p>Tu certificado ha sido enviado y está siendo revisado por el inspector.</p>
-      <button class="success-btn" on:click={() => dispatch('close')}>
+      <button class="success-btn" on:click={handleBackToDashboard}>
         Volver al Dashboard
       </button>
     </div>
@@ -891,7 +949,7 @@
                 class:active={activeTab === 'general'}
                 on:click={() => activeTab = 'general'}
               >
-                General ({manoDeObra.length})
+                Lista completa ({manoDeObra.length})
               </button>
               <button 
                 class="tab-btn" 
@@ -907,6 +965,14 @@
               {#each manoDeObraFiltrada as item}
                 <div class="code-item" class:selected={isCodigoSeleccionado(item)}>
                   <div class="code-info">
+                    <button 
+                      class="favorite-btn-left" 
+                      class:favorited={isFavorito(item)}
+                      on:click|stopPropagation={() => toggleFavorito(item)}
+                      title={isFavorito(item) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                    >
+                      {isFavorito(item) ? '⭐' : '☆'}
+                    </button>
                     <div class="code-main">
                       <span class="code">{item.codigo}</span>
                       <span class="description">{item.descripcion}</span>
@@ -923,14 +989,6 @@
                     </div>
                   </div>
                   <div class="code-actions">
-                    <button 
-                      class="favorite-btn" 
-                      class:favorited={isFavorito(item)}
-                      on:click|stopPropagation={() => toggleFavorito(item)}
-                      title={isFavorito(item) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                    >
-                      {isFavorito(item) ? '⭐' : '☆'}
-                    </button>
                     <button 
                       class="select-btn" 
                       class:selected={isCodigoSeleccionado(item)}
@@ -1157,7 +1215,7 @@
                 class:active={activeTabMateriales === 'general'}
                 on:click={() => activeTabMateriales = 'general'}
               >
-                General ({materiales.length})
+                Lista completa ({materiales.length})
               </button>
               <button 
                 class="tab-btn" 
@@ -1173,6 +1231,14 @@
               {#each materialesUtilizadosFiltrados as item}
                 <div class="code-item" class:selected={isMaterialUtilizadoSeleccionado(item)}>
                   <div class="code-info">
+                    <button 
+                      class="favorite-btn-left" 
+                      class:favorited={isFavoritoMaterialUtilizado(item)}
+                      on:click|stopPropagation={() => toggleFavoritoMaterialUtilizado(item)}
+                      title={isFavoritoMaterialUtilizado(item) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                    >
+                      {isFavoritoMaterialUtilizado(item) ? '⭐' : '☆'}
+                    </button>
                     <div class="code-main">
                       <span class="code">{item.codigo}</span>
                       <span class="description">{item.descripcion}</span>
@@ -1182,14 +1248,6 @@
                     </div>
                   </div>
                   <div class="code-actions">
-                    <button 
-                      class="favorite-btn" 
-                      class:favorited={isFavoritoMaterialUtilizado(item)}
-                      on:click|stopPropagation={() => toggleFavoritoMaterialUtilizado(item)}
-                      title={isFavoritoMaterialUtilizado(item) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                    >
-                      {isFavoritoMaterialUtilizado(item) ? '⭐' : '☆'}
-                    </button>
                     <button 
                       class="select-btn" 
                       class:selected={isMaterialUtilizadoSeleccionado(item)}
@@ -1305,7 +1363,7 @@
                 class:active={activeTabMateriales === 'general'}
                 on:click={() => activeTabMateriales = 'general'}
               >
-                General ({materiales.length})
+                Lista completa ({materiales.length})
               </button>
               <button 
                 class="tab-btn" 
@@ -1321,6 +1379,14 @@
               {#each materialesRecuperadosFiltrados as item}
                 <div class="code-item" class:selected={isMaterialRecuperadoSeleccionado(item)}>
                   <div class="code-info">
+                    <button 
+                      class="favorite-btn-left" 
+                      class:favorited={isFavoritoMaterialRecuperado(item)}
+                      on:click|stopPropagation={() => toggleFavoritoMaterialRecuperado(item)}
+                      title={isFavoritoMaterialRecuperado(item) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                    >
+                      {isFavoritoMaterialRecuperado(item) ? '⭐' : '☆'}
+                    </button>
                     <div class="code-main">
                       <span class="code">{item.codigo}</span>
                       <span class="description">{item.descripcion}</span>
@@ -1330,14 +1396,6 @@
                     </div>
                   </div>
                   <div class="code-actions">
-                    <button 
-                      class="favorite-btn" 
-                      class:favorited={isFavoritoMaterialRecuperado(item)}
-                      on:click|stopPropagation={() => toggleFavoritoMaterialRecuperado(item)}
-                      title={isFavoritoMaterialRecuperado(item) ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                    >
-                      {isFavoritoMaterialRecuperado(item) ? '⭐' : '☆'}
-                    </button>
                     <button 
                       class="select-btn" 
                       class:selected={isMaterialRecuperadoSeleccionado(item)}
@@ -1953,6 +2011,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
   }
   
   .code-main {
@@ -1978,6 +2037,7 @@
     gap: 1rem;
     font-size: 0.85rem;
     color: #6c757d;
+    margin-right: 0.5rem;
   }
   
   .unit {
@@ -1996,6 +2056,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    margin-left: 1rem;
   }
   
   .favorite-btn {
@@ -2013,6 +2074,26 @@
   }
   
   .favorite-btn.favorited {
+    color: #ffc107;
+  }
+  
+  .favorite-btn-left {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+  
+  .favorite-btn-left:hover {
+    background: rgba(255, 193, 7, 0.1);
+  }
+  
+  .favorite-btn-left.favorited {
     color: #ffc107;
   }
   
