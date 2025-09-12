@@ -49,6 +49,9 @@
   // Estados para cuadrilla modelo
   let porcentajeCuadrillaModelo = 40;
   
+  // Estado para error de validación de códigos automáticos
+  let errorValidacionAutomaticos = '';
+  
   // Archivos
   let archivos: FileList | null = null;
   let archivosPreview: { name: string; type: string; size: number; previewUrl?: string }[] = [];
@@ -104,55 +107,53 @@
     let costoMinimoCalculado = 0;
     let cuadrillaModeloCalculada = 0;
     
+    // Verificar si ambos códigos automáticos están seleccionados
+    const tieneCostoMinimo = codigosManoDeObraSeleccionados.some(c => c.codigo === '5020982');
+    const tieneCuadrillaModelo = codigosManoDeObraSeleccionados.some(c => c.codigo === '5033311');
+    const ambosAutomaticos = tieneCostoMinimo && tieneCuadrillaModelo;
+    
+    // PASO 1: Calcular subtotal de otros items (excluyendo ambos códigos automáticos)
+    let subtotalOtrosItemsBase = 0;
+    codigosManoDeObraSeleccionados.forEach(otroCodigo => {
+      if (otroCodigo.codigo !== '5020982' && otroCodigo.codigo !== '5033311') {
+        const otraCantidad = cantidadesManoDeObra[otroCodigo.id] || 0;
+        const otroPrecio = parseFloat(otroCodigo.precio) || 0;
+        subtotalOtrosItemsBase += otraCantidad * otroPrecio;
+      }
+    });
+    
+    // PASO 2: Calcular cuadrilla modelo (40% del subtotal base)
+    cuadrillaModeloCalculada = subtotalOtrosItemsBase * (porcentajeCuadrillaModelo / 100);
+    
+    // PASO 3: Calcular costo mínimo diario
+    const totalConCuadrilla = subtotalOtrosItemsBase + cuadrillaModeloCalculada;
+    if (totalConCuadrilla < costoMinimoDiario) {
+      // Si no supera el costo mínimo, aplicar la diferencia
+      costoMinimoCalculado = costoMinimoDiario - totalConCuadrilla;
+    } else {
+      // Si supera el costo mínimo, el costo mínimo va a 0
+      costoMinimoCalculado = 0;
+    }
+    
+    // PASO 4: Validación y error
+    if (ambosAutomaticos && totalConCuadrilla >= costoMinimoDiario) {
+      errorValidacionAutomaticos = `La suma de otros códigos ($${subtotalOtrosItemsBase.toLocaleString('es-AR', { minimumFractionDigits: 2 })}) + cuadrilla modelo ($${cuadrillaModeloCalculada.toLocaleString('es-AR', { minimumFractionDigits: 2 })}) = $${totalConCuadrilla.toLocaleString('es-AR', { minimumFractionDigits: 2 })} supera el costo mínimo diario ($${costoMinimoDiario.toLocaleString('es-AR', { minimumFractionDigits: 2 })}). El costo mínimo diario no aplica. Debe eliminar el código 5020982 - COSTO MÍNIMO DIARIO.`;
+    } else {
+      errorValidacionAutomaticos = '';
+    }
+    
+    // PASO 5: Calcular totales finales
     codigosManoDeObraSeleccionados.forEach(codigo => {
       const cantidad = cantidadesManoDeObra[codigo.id] || 0;
       let precio = parseFloat(codigo.precio) || 0;
       
-      // Para el código 5020982, calcular automáticamente
+      // Para el código 5020982, usar el costo mínimo calculado
       if (codigo.codigo === '5020982') {
-        // Calcular subtotal de otros items (excluyendo el costo mínimo diario y cuadrilla modelo)
-        subtotalOtrosItems = 0;
-        codigosManoDeObraSeleccionados.forEach(otroCodigo => {
-          if (otroCodigo.codigo !== '5020982' && otroCodigo.codigo !== '5033311') {
-            const otraCantidad = cantidadesManoDeObra[otroCodigo.id] || 0;
-            const otroPrecio = parseFloat(otroCodigo.precio) || 0;
-            subtotalOtrosItems += otraCantidad * otroPrecio;
-          }
-        });
-        
-        // Calcular la diferencia (costo mínimo diario - subtotal otros items)
-        costoMinimoCalculado = Math.max(0, costoMinimoDiario - subtotalOtrosItems);
         precio = costoMinimoCalculado;
       }
       
-      // Para el código 5033311, calcular automáticamente
+      // Para el código 5033311, usar la cuadrilla modelo calculada
       if (codigo.codigo === '5033311') {
-        // Calcular subtotal de otros items (excluyendo cuadrilla modelo)
-        subtotalOtrosItems = 0;
-        codigosManoDeObraSeleccionados.forEach(otroCodigo => {
-          if (otroCodigo.codigo !== '5033311') {
-            const otraCantidad = cantidadesManoDeObra[otroCodigo.id] || 0;
-            let otroPrecio = parseFloat(otroCodigo.precio) || 0;
-            
-            // Si es el costo mínimo diario, usar el precio calculado
-            if (otroCodigo.codigo === '5020982') {
-              let subtotalOtrosParaCostoMinimo = 0;
-              codigosManoDeObraSeleccionados.forEach(codigoParaCostoMinimo => {
-                if (codigoParaCostoMinimo.codigo !== '5020982' && codigoParaCostoMinimo.codigo !== '5033311') {
-                  const cantidadParaCostoMinimo = cantidadesManoDeObra[codigoParaCostoMinimo.id] || 0;
-                  const precioParaCostoMinimo = parseFloat(codigoParaCostoMinimo.precio) || 0;
-                  subtotalOtrosParaCostoMinimo += cantidadParaCostoMinimo * precioParaCostoMinimo;
-                }
-              });
-              otroPrecio = Math.max(0, costoMinimoDiario - subtotalOtrosParaCostoMinimo);
-            }
-            
-            subtotalOtrosItems += otraCantidad * otroPrecio;
-          }
-        });
-        
-        // Calcular el adicional (40% del subtotal otros items)
-        cuadrillaModeloCalculada = subtotalOtrosItems * (porcentajeCuadrillaModelo / 100);
         precio = cuadrillaModeloCalculada;
       }
       
@@ -285,6 +286,13 @@
             return false;
           }
         }
+        
+        // Validar códigos automáticos si hay error
+        if (errorValidacionAutomaticos) {
+          await showError('Error en Códigos Automáticos', errorValidacionAutomaticos);
+          return false;
+        }
+        
         return true;
       case 4:
         if (codigosMaterialesUtilizados.length === 0) {
@@ -359,6 +367,13 @@
       cantidadesManoDeObra[identifier] = (codigo.codigo === '5020982' || codigo.codigo === '5033311') ? 1 : 0;
     }
     
+  }
+
+  // Función para eliminar item de mano de obra desde la etapa de cantidades
+  function removeManoDeObraItem(codigo: any) {
+    const identifier = codigo.id || codigo.codigo;
+    codigosManoDeObraSeleccionados = codigosManoDeObraSeleccionados.filter(c => (c.id || c.codigo) !== identifier);
+    delete cantidadesManoDeObra[identifier];
   }
 
   function updateCantidadManoDeObra(codigoId: string, cantidad: number) {
@@ -474,6 +489,20 @@
   
   function updateCantidadMaterialRecuperado(materialId: string, cantidad: number) {
     cantidadesMaterialesRecuperados[materialId] = cantidad;
+  }
+
+  // Función para eliminar item de material utilizado desde la etapa de cantidades
+  function removeMaterialUtilizadoItem(material: any) {
+    const identifier = material.id || material.codigo;
+    codigosMaterialesUtilizados = codigosMaterialesUtilizados.filter(m => (m.id || m.codigo) !== identifier);
+    delete cantidadesMaterialesUtilizados[identifier];
+  }
+
+  // Función para eliminar item de material recuperado desde la etapa de cantidades
+  function removeMaterialRecuperadoItem(material: any) {
+    const identifier = material.id || material.codigo;
+    codigosMaterialesRecuperados = codigosMaterialesRecuperados.filter(m => (m.id || m.codigo) !== identifier);
+    delete cantidadesMaterialesRecuperados[identifier];
   }
   
   function isMaterialUtilizadoSeleccionado(material: any) {
@@ -935,18 +964,17 @@
             
             <div class="quantities-grid">
               {#each codigosManoDeObraSeleccionados as codigo}
-                <div class="quantity-item">
-                  <div class="quantity-info">
-                    <h4>{codigo.codigo} - {codigo.descripcion}</h4>
-                    <p>Unidad: {codigo.unidad_medida} | Precio: ${codigo.precio}</p>
-                    {#if codigo.codigo === '5020982'}
-                      <span class="auto-calculated-label">🔄 Se calcula automáticamente</span>
-                    {/if}
-                    {#if codigo.codigo === '5033311'}
+                <div class="quantity-item-compact">
+                  <div class="quantity-code">
+                    <span class="code">{codigo.codigo}</span>
+                  </div>
+                  <div class="quantity-description">
+                    <span class="description">{codigo.descripcion}</span>
+                    {#if codigo.codigo === '5020982' || codigo.codigo === '5033311'}
                       <span class="auto-calculated-label">🔄 Se calcula automáticamente</span>
                     {/if}
                   </div>
-                  <div class="quantity-input">
+                  <div class="quantity-input-compact">
                     <label for="cantidad-{codigo.id || codigo.codigo}">Cantidad:</label>
                     {#if codigo.codigo === '5020982' || codigo.codigo === '5033311'}
                       <input 
@@ -964,11 +992,21 @@
                         min="0" 
                         step="0.1"
                         value={cantidadesManoDeObra[codigo.id || codigo.codigo] || 0}
-                        on:input={(e) => updateCantidadManoDeObra(codigo.id || codigo.codigo, parseFloat(e.target.value) || 0)}
+                        on:input={(e) => updateCantidadManoDeObra(codigo.id || codigo.codigo, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
                       />
                     {/if}
                     <span class="unit">{codigo.unidad_medida}</span>
                   </div>
+                  <div class="quantity-price">
+                    <span class="price">${codigo.precio}</span>
+                  </div>
+                  <button 
+                    class="remove-btn" 
+                    on:click={() => removeManoDeObraItem(codigo)}
+                    title="Eliminar este item"
+                  >
+                    🗑️
+                  </button>
                 </div>
               {/each}
             </div>
@@ -992,31 +1030,37 @@
                       });
                       return total;
                     })()}
-                    {@const precio = codigo.codigo === '5020982' ? Math.max(0, costoMinimoDiario - subtotalOtrosItems) : 
-                                    codigo.codigo === '5033311' ? (() => {
-                                      let subtotalParaCuadrilla = 0;
+                    {@const precio = codigo.codigo === '5020982' ? (() => {
+                                      // Calcular subtotal base (excluyendo ambos códigos automáticos)
+                                      let subtotalBase = 0;
                                       codigosManoDeObraSeleccionados.forEach(otroCodigo => {
-                                        if (otroCodigo.codigo !== '5033311') {
+                                        if (otroCodigo.codigo !== '5020982' && otroCodigo.codigo !== '5033311') {
                                           const otraCantidad = cantidadesManoDeObra[otroCodigo.id] || 0;
-                                          let otroPrecio = parseFloat(otroCodigo.precio) || 0;
-                                          
-                                          // Si es el costo mínimo diario, usar el precio calculado
-                                          if (otroCodigo.codigo === '5020982') {
-                                            let subtotalOtrosParaCostoMinimo = 0;
-                                            codigosManoDeObraSeleccionados.forEach(codigoParaCostoMinimo => {
-                                              if (codigoParaCostoMinimo.codigo !== '5020982' && codigoParaCostoMinimo.codigo !== '5033311') {
-                                                const cantidadParaCostoMinimo = cantidadesManoDeObra[codigoParaCostoMinimo.id] || 0;
-                                                const precioParaCostoMinimo = parseFloat(codigoParaCostoMinimo.precio) || 0;
-                                                subtotalOtrosParaCostoMinimo += cantidadParaCostoMinimo * precioParaCostoMinimo;
-                                              }
-                                            });
-                                            otroPrecio = Math.max(0, costoMinimoDiario - subtotalOtrosParaCostoMinimo);
-                                          }
-                                          
-                                          subtotalParaCuadrilla += otraCantidad * otroPrecio;
+                                          const otroPrecio = parseFloat(otroCodigo.precio) || 0;
+                                          subtotalBase += otraCantidad * otroPrecio;
                                         }
                                       });
-                                      return subtotalParaCuadrilla * (porcentajeCuadrillaModelo / 100);
+                                      
+                                      // Calcular cuadrilla modelo
+                                      const cuadrillaModelo = subtotalBase * (porcentajeCuadrillaModelo / 100);
+                                      
+                                      // Calcular costo mínimo diario
+                                      const totalConCuadrilla = subtotalBase + cuadrillaModelo;
+                                      return totalConCuadrilla < costoMinimoDiario ? costoMinimoDiario - totalConCuadrilla : 0;
+                                    })() : 
+                                    codigo.codigo === '5033311' ? (() => {
+                                      // Calcular subtotal base (excluyendo ambos códigos automáticos)
+                                      let subtotalBase = 0;
+                                      codigosManoDeObraSeleccionados.forEach(otroCodigo => {
+                                        if (otroCodigo.codigo !== '5020982' && otroCodigo.codigo !== '5033311') {
+                                          const otraCantidad = cantidadesManoDeObra[otroCodigo.id] || 0;
+                                          const otroPrecio = parseFloat(otroCodigo.precio) || 0;
+                                          subtotalBase += otraCantidad * otroPrecio;
+                                        }
+                                      });
+                                      
+                                      // Calcular cuadrilla modelo (40% del subtotal base)
+                                      return subtotalBase * (porcentajeCuadrillaModelo / 100);
                                     })() : precioBase}
                     {@const subtotalItem = cantidad * precio}
                     {#if cantidad > 0 && subtotalItem > 0}
@@ -1048,6 +1092,18 @@
               </div>
             {/if}
             
+            <!-- Mostrar error de validación de códigos automáticos -->
+            {#if errorValidacionAutomaticos}
+              <div class="validation-error">
+                <div class="error-header">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-title">Error en Códigos Automáticos</span>
+                </div>
+                <div class="error-message">
+                  {errorValidacionAutomaticos}
+                </div>
+              </div>
+            {/if}
             
             <!-- Navegación -->
             <div class="step-navigation">
@@ -1168,9 +1224,18 @@
             <div class="quantities-grid">
               {#each codigosMaterialesUtilizados as material}
                 <div class="quantity-item">
-                  <div class="quantity-info">
-                    <h4>{material.codigo} - {material.descripcion}</h4>
-                    <p>Unidad: {material.unidad_medida}</p>
+                  <div class="quantity-header">
+                    <div class="quantity-info">
+                      <h4>{material.codigo} - {material.descripcion}</h4>
+                      <p>Unidad: {material.unidad_medida}</p>
+                    </div>
+                    <button 
+                      class="remove-btn" 
+                      on:click={() => removeMaterialUtilizadoItem(material)}
+                      title="Eliminar este material"
+                    >
+                      🗑️
+                    </button>
                   </div>
                   <div class="quantity-input">
                     <label for="cantidad-material-utilizado-{material.id}">Cantidad:</label>
@@ -1180,7 +1245,7 @@
                       min="0" 
                       step="0.1"
                       value={cantidadesMaterialesUtilizados[material.id] || 0}
-                      on:input={(e) => updateCantidadMaterialUtilizado(material.id, parseFloat(e.target.value) || 0)}
+                      on:input={(e) => updateCantidadMaterialUtilizado(material.id, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
                     />
                     <span class="unit">{material.unidad_medida}</span>
                   </div>
@@ -1307,9 +1372,18 @@
             <div class="quantities-grid">
               {#each codigosMaterialesRecuperados as material}
                 <div class="quantity-item">
-                  <div class="quantity-info">
-                    <h4>{material.codigo} - {material.descripcion}</h4>
-                    <p>Unidad: {material.unidad_medida}</p>
+                  <div class="quantity-header">
+                    <div class="quantity-info">
+                      <h4>{material.codigo} - {material.descripcion}</h4>
+                      <p>Unidad: {material.unidad_medida}</p>
+                    </div>
+                    <button 
+                      class="remove-btn" 
+                      on:click={() => removeMaterialRecuperadoItem(material)}
+                      title="Eliminar este material"
+                    >
+                      🗑️
+                    </button>
                   </div>
                   <div class="quantity-input">
                     <label for="cantidad-material-recuperado-{material.id}">Cantidad:</label>
@@ -1319,7 +1393,7 @@
                       min="0" 
                       step="0.1"
                       value={cantidadesMaterialesRecuperados[material.id] || 0}
-                      on:input={(e) => updateCantidadMaterialRecuperado(material.id, parseFloat(e.target.value) || 0)}
+                      on:input={(e) => updateCantidadMaterialRecuperado(material.id, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
                     />
                     <span class="unit">{material.unidad_medida}</span>
                   </div>
@@ -2334,12 +2408,150 @@
   
   .quantity-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 1rem;
     padding: 1rem;
     border: 1px solid #dee2e6;
     border-radius: 8px;
     background: white;
+  }
+
+  .quantity-item-compact {
+    display: grid;
+    grid-template-columns: 80px 1fr 200px 100px 50px;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+  }
+
+  .quantity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .quantity-code {
+    display: flex;
+    align-items: center;
+  }
+
+  .quantity-code .code {
+    font-weight: 600;
+    color: #1976d2;
+    font-size: 0.9rem;
+  }
+
+  .quantity-description {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .quantity-description .description {
+    font-size: 0.9rem;
+    color: #495057;
+    line-height: 1.3;
+  }
+
+  .quantity-input-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .quantity-input-compact label {
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .quantity-input-compact input {
+    width: 60px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+
+  .quantity-input-compact .unit {
+    font-size: 0.8rem;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+  }
+
+  .quantity-price {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .quantity-price .price {
+    font-weight: 600;
+    color: #28a745;
+    font-size: 0.9rem;
+  }
+
+  .remove-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.25rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+  }
+
+  .remove-btn:hover {
+    background: #c82333;
+    transform: scale(1.05);
+  }
+
+  .remove-btn:active {
+    transform: scale(0.95);
+  }
+
+  .validation-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+
+  .error-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .error-icon {
+    font-size: 1.2rem;
+  }
+
+  .error-title {
+    font-weight: 600;
+    color: #721c24;
+    font-size: 1rem;
+  }
+
+  .error-message {
+    color: #721c24;
+    font-size: 0.9rem;
+    line-height: 1.4;
   }
   
   .quantity-info h4 {
