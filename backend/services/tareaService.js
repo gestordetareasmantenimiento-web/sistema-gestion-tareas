@@ -706,8 +706,10 @@ const getHistorialTarea = async (req, res) => {
 // Función para editar certificado cuando hay observación
 const editarCertificado = async (req, res) => {
   try {
+    console.log('🔧 Iniciando editarCertificado...');
     const { id } = req.params;
     const id_usuario = req.user.id;
+    console.log('📋 Parámetros:', { id, id_usuario });
     
     // Verificar que la tarea esté en estado de observación
     const tarea = await new Promise((resolve, reject) => {
@@ -719,8 +721,12 @@ const editarCertificado = async (req, res) => {
       return res.status(404).json({ error: 'Tarea no encontrada.' });
     }
     
-    if (!tarea.estado.toLowerCase().includes('observada')) {
-      return res.status(400).json({ error: 'Solo se pueden editar certificados de tareas observadas.' });
+    // Permitir editar si la tarea está observada o si está pendiente de certificación (después de corrección)
+    const estadoPermitido = tarea.estado.toLowerCase().includes('observada') || 
+                           tarea.estado === 'Pendiente Certificación Inspector';
+    
+    if (!estadoPermitido) {
+      return res.status(400).json({ error: 'Solo se pueden editar certificados de tareas observadas o pendientes de certificación.' });
     }
     
     // Extraer datos del FormData
@@ -835,8 +841,16 @@ const editarCertificado = async (req, res) => {
     }
     
     // Registrar en el historial
-    await historialService.registrar(id, id_usuario, 'Certificado Editado', `Certificado editado y corregido. Tarea vuelve a estado: Pendiente Certificación Inspector.`);
+    console.log('📝 Registrando en historial...');
+    try {
+      await historialService.registrar(id, id_usuario, 'Certificado Editado', `Certificado editado y corregido. Tarea vuelve a estado: Pendiente Certificación Inspector.`);
+      console.log('✅ Historial registrado exitosamente');
+    } catch (historialError) {
+      console.error('❌ Error al registrar en historial:', historialError);
+      // No fallar por error de historial, continuar con la respuesta
+    }
     
+    console.log('📤 Enviando respuesta exitosa...');
     res.json({ 
       message: 'Certificado editado exitosamente. La tarea vuelve a estado: Pendiente Certificación Inspector.',
       data: { 

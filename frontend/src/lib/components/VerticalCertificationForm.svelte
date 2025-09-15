@@ -106,6 +106,10 @@
   
   // Cálculos automáticos de totales
   $: {
+    console.log('🔄 Ejecutando cálculos automáticos...');
+    console.log('🔍 Debug - codigosManoDeObraSeleccionados:', codigosManoDeObraSeleccionados);
+    console.log('🔍 Debug - cantidadesManoDeObra:', cantidadesManoDeObra);
+    
     subtotalManoDeObra = 0;
     let subtotalOtrosItems = 0;
     let costoMinimoCalculado = 0;
@@ -120,7 +124,7 @@
     let subtotalOtrosItemsBase = 0;
     codigosManoDeObraSeleccionados.forEach(otroCodigo => {
       if (otroCodigo.codigo !== '5020982' && otroCodigo.codigo !== '5033311') {
-        const otraCantidad = cantidadesManoDeObra[otroCodigo.id] || 0;
+        const otraCantidad = cantidadesManoDeObra[otroCodigo.codigo] || 0;
         const otroPrecio = parseFloat(otroCodigo.precio) || 0;
         subtotalOtrosItemsBase += otraCantidad * otroPrecio;
       }
@@ -148,24 +152,49 @@
     
     // PASO 5: Calcular totales finales
     codigosManoDeObraSeleccionados.forEach(codigo => {
-      const cantidad = cantidadesManoDeObra[codigo.id] || 0;
+      const cantidad = cantidadesManoDeObra[codigo.codigo] || 0;
       let precio = parseFloat(codigo.precio) || 0;
+      
+      console.log(`💰 Calculando para ${codigo.codigo}:`, {
+        cantidad,
+        precioOriginal: codigo.precio,
+        precioParseado: precio,
+        codigo: codigo.codigo
+      });
       
       // Para el código 5020982, usar el costo mínimo calculado
       if (codigo.codigo === '5020982') {
         precio = costoMinimoCalculado;
+        console.log(`💰 Costo mínimo aplicado para ${codigo.codigo}:`, precio);
       }
       
       // Para el código 5033311, usar la cuadrilla modelo calculada
       if (codigo.codigo === '5033311') {
         precio = cuadrillaModeloCalculada;
+        console.log(`💰 Cuadrilla modelo aplicada para ${codigo.codigo}:`, precio);
       }
       
-      subtotalManoDeObra += cantidad * precio;
+      const subtotalItem = cantidad * precio;
+      console.log(`💰 Subtotal item ${codigo.codigo}:`, subtotalItem);
+      subtotalManoDeObra += subtotalItem;
     });
     
     ivaManoDeObra = subtotalManoDeObra * 0.21;
     totalManoDeObra = subtotalManoDeObra + ivaManoDeObra;
+    
+    console.log('💰 Resultados del cálculo:', {
+      subtotalManoDeObra,
+      ivaManoDeObra,
+      totalManoDeObra,
+      subtotalOtrosItems,
+      costoMinimoCalculado,
+      cuadrillaModeloCalculada
+    });
+    
+    // Forzar reactividad de las variables de totales
+    subtotalManoDeObra = subtotalManoDeObra;
+    ivaManoDeObra = ivaManoDeObra;
+    totalManoDeObra = totalManoDeObra;
   }
   
   // Configuración de pasos
@@ -263,7 +292,7 @@
   });
 
   // Función para cargar datos del certificado existente en modo edición
-  function loadExistingCertificateData() {
+  async function loadExistingCertificateData() {
     if (!certificadoData) return;
     
     console.log('📋 Cargando datos del certificado existente:', certificadoData);
@@ -281,14 +310,24 @@
     
     // Cargar mano de obra
     if (certificadoData.mano_de_obra && Array.isArray(certificadoData.mano_de_obra)) {
-      codigosManoDeObraSeleccionados = certificadoData.mano_de_obra.map((item: any) => ({
-        codigo: item.codigo,
-        descripcion: item.descripcion,
-        unidad_medida: item.unidad_medida,
-        precio_unitario: item.precio_unitario
-      }));
+      // Primero, obtener los precios actuales desde la lista de mano de obra
+      await loadCurrentPrices();
       
-      // Cargar cantidades
+      codigosManoDeObraSeleccionados = certificadoData.mano_de_obra.map((item: any) => {
+        // Buscar el precio actual en la lista de mano de obra
+        const currentItem = manoDeObra.find(m => m.codigo === item.codigo);
+        const currentPrice = currentItem ? currentItem.precio : item.precio_unitario;
+        
+        return {
+          id: item.codigo, // Usar codigo como id para consistencia
+          codigo: item.codigo,
+          descripcion: item.descripcion,
+          unidad_medida: item.unidad_medida,
+          precio: currentPrice // Usar precio actual de la lista
+        };
+      });
+      
+      // Cargar cantidades usando el id (que es el codigo)
       certificadoData.mano_de_obra.forEach((item: any) => {
         cantidadesManoDeObra[item.codigo] = item.cantidad || 0;
       });
@@ -296,12 +335,23 @@
     
     // Cargar materiales utilizados
     if (certificadoData.materialesUtilizados && Array.isArray(certificadoData.materialesUtilizados)) {
-      codigosMaterialesUtilizados = certificadoData.materialesUtilizados.map((item: any) => ({
-        codigo: item.codigo,
-        descripcion: item.descripcion,
-        unidad_medida: item.unidad_medida,
-        precio_unitario: item.precio_unitario
-      }));
+      // Cargar precios actuales de materiales si no están cargados
+      if (materiales.length === 0) {
+        await loadCurrentMaterialPrices();
+      }
+      
+      codigosMaterialesUtilizados = certificadoData.materialesUtilizados.map((item: any) => {
+        // Buscar el precio actual en la lista de materiales
+        const currentItem = materiales.find(m => m.codigo === item.codigo);
+        const currentPrice = currentItem ? currentItem.precio : item.precio_unitario;
+        
+        return {
+          codigo: item.codigo,
+          descripcion: item.descripcion,
+          unidad_medida: item.unidad_medida,
+          precio: currentPrice
+        };
+      });
       
       // Cargar cantidades
       certificadoData.materialesUtilizados.forEach((item: any) => {
@@ -311,12 +361,23 @@
     
     // Cargar materiales recuperados
     if (certificadoData.materialesRecuperados && Array.isArray(certificadoData.materialesRecuperados)) {
-      codigosMaterialesRecuperados = certificadoData.materialesRecuperados.map((item: any) => ({
-        codigo: item.codigo,
-        descripcion: item.descripcion,
-        unidad_medida: item.unidad_medida,
-        precio_unitario: item.precio_unitario
-      }));
+      // Cargar precios actuales de materiales si no están cargados
+      if (materiales.length === 0) {
+        await loadCurrentMaterialPrices();
+      }
+      
+      codigosMaterialesRecuperados = certificadoData.materialesRecuperados.map((item: any) => {
+        // Buscar el precio actual en la lista de materiales
+        const currentItem = materiales.find(m => m.codigo === item.codigo);
+        const currentPrice = currentItem ? currentItem.precio : item.precio_unitario;
+        
+        return {
+          codigo: item.codigo,
+          descripcion: item.descripcion,
+          unidad_medida: item.unidad_medida,
+          precio: currentPrice
+        };
+      });
       
       // Cargar cantidades
       certificadoData.materialesRecuperados.forEach((item: any) => {
@@ -330,8 +391,26 @@
       observaciones,
       codigosManoDeObraSeleccionados,
       codigosMaterialesUtilizados,
-      codigosMaterialesRecuperados
+      codigosMaterialesRecuperados,
+      cantidadesManoDeObra
     });
+    
+    console.log('🔍 Debug - Estructura de mano de obra cargada:', certificadoData.mano_de_obra);
+    console.log('🔍 Debug - Códigos mapeados:', codigosManoDeObraSeleccionados);
+    console.log('🔍 Debug - Cantidades cargadas:', cantidadesManoDeObra);
+    
+    // Debug detallado de cada item
+    if (certificadoData.mano_de_obra && Array.isArray(certificadoData.mano_de_obra)) {
+      certificadoData.mano_de_obra.forEach((item: any, index: number) => {
+        console.log(`🔍 Item ${index}:`, {
+          codigo: item.codigo,
+          descripcion: item.descripcion,
+          precio_unitario: item.precio_unitario,
+          cantidad: item.cantidad,
+          unidad_medida: item.unidad_medida
+        });
+      });
+    }
     
     // Forzar recálculo de totales después de cargar los datos
     // Esto se hace modificando las variables reactivas para que se disparen los cálculos
@@ -347,7 +426,39 @@
       codigosManoDeObraSeleccionados = tempCodigos;
       
       console.log('🔄 Forzando recálculo de totales...');
+      
+      // Forzar recálculo inmediato de los totales
+      forceRecalculateTotals();
     }, 200);
+  }
+
+  // Función para forzar recálculo de totales
+  function forceRecalculateTotals() {
+    console.log('🔄 Forzando recálculo de totales...');
+    // Forzar reactividad modificando las variables
+    const tempCantidades = { ...cantidadesManoDeObra };
+    cantidadesManoDeObra = {};
+    cantidadesManoDeObra = tempCantidades;
+    
+    const tempCodigos = [...codigosManoDeObraSeleccionados];
+    codigosManoDeObraSeleccionados = [];
+    codigosManoDeObraSeleccionados = tempCodigos;
+    
+    // Forzar reactividad de las variables de totales
+    const tempSubtotal = subtotalManoDeObra;
+    const tempIva = ivaManoDeObra;
+    const tempTotal = totalManoDeObra;
+    
+    subtotalManoDeObra = 0;
+    ivaManoDeObra = 0;
+    totalManoDeObra = 0;
+    
+    // Restaurar valores para forzar reactividad
+    subtotalManoDeObra = tempSubtotal;
+    ivaManoDeObra = tempIva;
+    totalManoDeObra = tempTotal;
+    
+    console.log('✅ Recálculo forzado completado');
   }
 
   // Funciones de navegación
@@ -356,6 +467,14 @@
     if (await validateCurrentStep()) {
       console.log('Validation passed, advancing to step:', currentStep + 1);
       currentStep++;
+      
+      // Si estamos navegando al paso 3 (Cantidades Mano de Obra), forzar recálculo
+      if (currentStep === 3) {
+        console.log('🔄 Navegando al paso 3 - Forzando recálculo de totales...');
+        setTimeout(() => {
+          forceRecalculateTotals();
+        }, 100);
+      }
     } else {
       console.log('Validation failed, staying at step:', currentStep);
     }
@@ -368,6 +487,14 @@
   async function goToStep(step: number) {
     if (step <= currentStep || await validateCurrentStep()) {
       currentStep = step;
+      
+      // Si estamos navegando al paso 3 (Cantidades Mano de Obra), forzar recálculo
+      if (step === 3) {
+        console.log('🔄 Navegando directamente al paso 3 - Forzando recálculo de totales...');
+        setTimeout(() => {
+          forceRecalculateTotals();
+        }, 100);
+      }
     }
   }
   
@@ -393,8 +520,7 @@
       case 3:
         // Validar que todas las cantidades sean mayores a 0
         for (const codigo of codigosManoDeObraSeleccionados) {
-          const identifier = codigo.id || codigo.codigo;
-          const cantidad = cantidadesManoDeObra[identifier];
+          const cantidad = cantidadesManoDeObra[codigo.codigo];
           if (cantidad === undefined || cantidad === null || cantidad <= 0) {
             await showError('No puede haber items en 0', `Debes ingresar una cantidad válida para ${codigo.descripcion}.`);
             return false;
@@ -409,18 +535,17 @@
         
         return true;
       case 4:
-        if (codigosMaterialesUtilizados.length === 0) {
-          await showError('Materiales Requeridos', 'Debes seleccionar al menos un material utilizado.');
-          return false;
-        }
+        // Paso 4 es selección de materiales utilizados (opcional)
         return true;
       case 5:
-        // Validar que todas las cantidades de materiales utilizados sean mayores a 0
-        for (const material of codigosMaterialesUtilizados) {
-          const cantidad = cantidadesMaterialesUtilizados[material.id];
-          if (!cantidad || cantidad <= 0) {
-            await showError('Cantidad Inválida', `Debes ingresar una cantidad válida para ${material.descripcion}.`);
-            return false;
+        // Validar cantidades de materiales utilizados solo si hay materiales seleccionados
+        if (codigosMaterialesUtilizados.length > 0) {
+          for (const material of codigosMaterialesUtilizados) {
+            const cantidad = cantidadesMaterialesUtilizados[material.codigo];
+            if (!cantidad || cantidad <= 0) {
+              await showError('Cantidad Inválida', `Debes ingresar una cantidad válida para ${material.descripcion}.`);
+              return false;
+            }
           }
         }
         return true;
@@ -428,12 +553,14 @@
         // Paso 6 es selección de materiales recuperados (opcional)
         return true;
       case 7:
-        // Validar cantidades de materiales recuperados (opcional, pero si hay seleccionados deben tener cantidad)
-        for (const material of codigosMaterialesRecuperados) {
-          const cantidad = cantidadesMaterialesRecuperados[material.id];
-          if (!cantidad || cantidad <= 0) {
-            await showError('Cantidad Inválida', `Debes ingresar una cantidad válida para ${material.descripcion}.`);
-            return false;
+        // Validar cantidades de materiales recuperados solo si hay materiales seleccionados
+        if (codigosMaterialesRecuperados.length > 0) {
+          for (const material of codigosMaterialesRecuperados) {
+            const cantidad = cantidadesMaterialesRecuperados[material.codigo];
+            if (!cantidad || cantidad <= 0) {
+              await showError('Cantidad Inválida', `Debes ingresar una cantidad válida para ${material.descripcion}.`);
+              return false;
+            }
           }
         }
         return true;
@@ -485,18 +612,38 @@
 
   // Función para eliminar item de mano de obra desde la etapa de cantidades
   function removeManoDeObraItem(codigo: any) {
-    const identifier = codigo.id || codigo.codigo;
-    codigosManoDeObraSeleccionados = codigosManoDeObraSeleccionados.filter(c => (c.id || c.codigo) !== identifier);
-    delete cantidadesManoDeObra[identifier];
+    const identifier = codigo.codigo; // Usar siempre codigo como identificador
+    console.log('🗑️ Eliminando item de mano de obra:', identifier);
+    
+    // Eliminar del array de códigos seleccionados
+    codigosManoDeObraSeleccionados = codigosManoDeObraSeleccionados.filter(c => c.codigo !== identifier);
+    
+    // Eliminar de cantidades y forzar reactividad
+    const newCantidades = { ...cantidadesManoDeObra };
+    delete newCantidades[identifier];
+    cantidadesManoDeObra = newCantidades;
+    
+    console.log('✅ Item eliminado. Códigos restantes:', codigosManoDeObraSeleccionados.length);
+    console.log('✅ Cantidades restantes:', cantidadesManoDeObra);
+    
+    // Forzar recálculo inmediato
+    setTimeout(() => {
+      forceRecalculateTotals();
+    }, 50);
   }
 
-  function updateCantidadManoDeObra(codigoId: string, cantidad: number) {
-    cantidadesManoDeObra[codigoId] = cantidad;
+  function updateCantidadManoDeObra(codigo: string, cantidad: number) {
+    console.log('📝 Actualizando cantidad para:', codigo, 'cantidad:', cantidad);
+    cantidadesManoDeObra[codigo] = cantidad;
+    
+    // Forzar recálculo después de actualizar cantidad
+    setTimeout(() => {
+      forceRecalculateTotals();
+    }, 50);
   }
 
   function isCodigoSeleccionado(codigo: any) {
-    const identifier = codigo.id || codigo.codigo;
-    return codigosManoDeObraSeleccionados.some(c => (c.id || c.codigo) === identifier);
+    return codigosManoDeObraSeleccionados.some(c => c.codigo === codigo.codigo);
   }
   
   // Funciones para manejar favoritos
@@ -569,12 +716,12 @@
     console.log('🔧 Material.id:', material.id);
     console.log('🔧 Material.codigo:', material.codigo);
     
-    // Usar codigo como identificador único si no hay id
-    const identifier = material.id || material.codigo;
-    const index = codigosMaterialesUtilizados.findIndex(m => (m.id || m.codigo) === identifier);
+    // Usar codigo como identificador único
+    const identifier = material.codigo;
+    const index = codigosMaterialesUtilizados.findIndex(m => m.codigo === identifier);
     
     if (index > -1) {
-      codigosMaterialesUtilizados = codigosMaterialesUtilizados.filter(m => (m.id || m.codigo) !== identifier);
+      codigosMaterialesUtilizados = codigosMaterialesUtilizados.filter(m => m.codigo !== identifier);
       delete cantidadesMaterialesUtilizados[identifier];
     } else {
       codigosMaterialesUtilizados = [...codigosMaterialesUtilizados, { ...material, id: identifier }];
@@ -585,12 +732,12 @@
   }
   
   function toggleCodigoMaterialRecuperado(material: any) {
-    // Usar codigo como identificador único si no hay id
-    const identifier = material.id || material.codigo;
-    const index = codigosMaterialesRecuperados.findIndex(m => (m.id || m.codigo) === identifier);
+    // Usar codigo como identificador único
+    const identifier = material.codigo;
+    const index = codigosMaterialesRecuperados.findIndex(m => m.codigo === identifier);
     
     if (index > -1) {
-      codigosMaterialesRecuperados = codigosMaterialesRecuperados.filter(m => (m.id || m.codigo) !== identifier);
+      codigosMaterialesRecuperados = codigosMaterialesRecuperados.filter(m => m.codigo !== identifier);
       delete cantidadesMaterialesRecuperados[identifier];
     } else {
       codigosMaterialesRecuperados = [...codigosMaterialesRecuperados, { ...material, id: identifier }];
@@ -598,38 +745,94 @@
     }
   }
   
-  function updateCantidadMaterialUtilizado(materialId: string, cantidad: number) {
-    cantidadesMaterialesUtilizados[materialId] = cantidad;
+  function updateCantidadMaterialUtilizado(materialCodigo: string, cantidad: number) {
+    cantidadesMaterialesUtilizados[materialCodigo] = cantidad;
   }
   
-  function updateCantidadMaterialRecuperado(materialId: string, cantidad: number) {
-    cantidadesMaterialesRecuperados[materialId] = cantidad;
+  function updateCantidadMaterialRecuperado(materialCodigo: string, cantidad: number) {
+    cantidadesMaterialesRecuperados[materialCodigo] = cantidad;
   }
 
   // Función para eliminar item de material utilizado desde la etapa de cantidades
   function removeMaterialUtilizadoItem(material: any) {
-    const identifier = material.id || material.codigo;
-    codigosMaterialesUtilizados = codigosMaterialesUtilizados.filter(m => (m.id || m.codigo) !== identifier);
-    delete cantidadesMaterialesUtilizados[identifier];
+    const identifier = material.codigo;
+    console.log('🗑️ Eliminando material utilizado:', identifier);
+    
+    // Eliminar del array de materiales seleccionados
+    codigosMaterialesUtilizados = codigosMaterialesUtilizados.filter(m => m.codigo !== identifier);
+    
+    // Eliminar de cantidades y forzar reactividad
+    const newCantidades = { ...cantidadesMaterialesUtilizados };
+    delete newCantidades[identifier];
+    cantidadesMaterialesUtilizados = newCantidades;
+    
+    console.log('✅ Material eliminado. Materiales restantes:', codigosMaterialesUtilizados.length);
   }
 
   // Función para eliminar item de material recuperado desde la etapa de cantidades
   function removeMaterialRecuperadoItem(material: any) {
-    const identifier = material.id || material.codigo;
-    codigosMaterialesRecuperados = codigosMaterialesRecuperados.filter(m => (m.id || m.codigo) !== identifier);
-    delete cantidadesMaterialesRecuperados[identifier];
+    const identifier = material.codigo;
+    console.log('🗑️ Eliminando material recuperado:', identifier);
+    
+    // Eliminar del array de materiales seleccionados
+    codigosMaterialesRecuperados = codigosMaterialesRecuperados.filter(m => m.codigo !== identifier);
+    
+    // Eliminar de cantidades y forzar reactividad
+    const newCantidades = { ...cantidadesMaterialesRecuperados };
+    delete newCantidades[identifier];
+    cantidadesMaterialesRecuperados = newCantidades;
+    
+    console.log('✅ Material eliminado. Materiales restantes:', codigosMaterialesRecuperados.length);
   }
   
   function isMaterialUtilizadoSeleccionado(material: any) {
-    const identifier = material.id || material.codigo;
-    return codigosMaterialesUtilizados.some(m => (m.id || m.codigo) === identifier);
+    return codigosMaterialesUtilizados.some(m => m.codigo === material.codigo);
   }
   
   function isMaterialRecuperadoSeleccionado(material: any) {
-    const identifier = material.id || material.codigo;
-    return codigosMaterialesRecuperados.some(m => (m.id || m.codigo) === identifier);
+    return codigosMaterialesRecuperados.some(m => m.codigo === material.codigo);
   }
   
+  // Función para cargar precios actuales
+  async function loadCurrentPrices() {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:3000/api/listas/mano-de-obra', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        manoDeObra = result.data || [];
+        console.log('✅ Precios actuales cargados:', manoDeObra.length, 'elementos');
+      } else {
+        console.error('❌ Error cargando precios actuales:', response.status);
+      }
+    } catch (error) {
+      console.error('Error cargando precios actuales:', error);
+    }
+  }
+
+  // Función para cargar precios actuales de materiales
+  async function loadCurrentMaterialPrices() {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:3000/api/listas/materiales', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        materiales = result.data || [];
+        console.log('✅ Precios de materiales actuales cargados:', materiales.length, 'elementos');
+      } else {
+        console.error('❌ Error cargando precios de materiales:', response.status);
+      }
+    } catch (error) {
+      console.error('Error cargando precios de materiales:', error);
+    }
+  }
+
   // Función para cargar costo mínimo diario
   async function cargarCostoMinimoDiario() {
     try {
@@ -921,14 +1124,22 @@
       });
       
       console.log('📡 Respuesta del servidor:', response.status, response.statusText);
+      console.log('📡 Headers de respuesta:', Object.fromEntries(response.headers.entries()));
       
       if (response.ok) {
-        const result = await response.json();
-        const successMessage = isEditMode ? '✅ Certificado editado exitosamente:' : '✅ Certificado emitido exitosamente:';
-        console.log(successMessage, result);
-        showSuccessModal = true;
-        // Usar tareaId que ya tenemos disponible
-        dispatch('certificadoEmitido', { tarea: tareaId });
+        try {
+          const result = await response.json();
+          const successMessage = isEditMode ? '✅ Certificado editado exitosamente:' : '✅ Certificado emitido exitosamente:';
+          console.log(successMessage, result);
+          showSuccessModal = true;
+          // Usar tareaId que ya tenemos disponible
+          dispatch('certificadoEmitido', { tarea: tareaId });
+        } catch (jsonError) {
+          console.error('❌ Error al parsear JSON de respuesta:', jsonError);
+          const responseText = await response.text();
+          console.log('📄 Respuesta como texto:', responseText);
+          throw new Error(`Error al procesar respuesta del servidor: ${jsonError.message}`);
+        }
       } else {
         const errorText = await response.text();
         console.error('❌ Error del servidor:', response.status, response.statusText, errorText);
@@ -1185,11 +1396,11 @@
                     {:else}
                       <input 
                         type="number" 
-                        id="cantidad-{codigo.id || codigo.codigo}"
+                        id="cantidad-{codigo.codigo}"
                         min="0" 
                         step="0.1"
-                        value={cantidadesManoDeObra[codigo.id || codigo.codigo] || 0}
-                        on:input={(e) => updateCantidadManoDeObra(codigo.id || codigo.codigo, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
+                        value={cantidadesManoDeObra[codigo.codigo] || 0}
+                        on:input={(e) => updateCantidadManoDeObra(codigo.codigo, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
                       />
                     {/if}
                     <span class="unit">{codigo.unidad_medida}</span>
@@ -1435,14 +1646,14 @@
                     </button>
                   </div>
                   <div class="quantity-input">
-                    <label for="cantidad-material-utilizado-{material.id}">Cantidad:</label>
+                    <label for="cantidad-material-utilizado-{material.codigo}">Cantidad:</label>
                     <input 
                       type="number" 
-                      id="cantidad-material-utilizado-{material.id}"
+                      id="cantidad-material-utilizado-{material.codigo}"
                       min="0" 
                       step="0.1"
-                      value={cantidadesMaterialesUtilizados[material.id] || 0}
-                      on:input={(e) => updateCantidadMaterialUtilizado(material.id, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
+                      value={cantidadesMaterialesUtilizados[material.codigo] || 0}
+                      on:input={(e) => updateCantidadMaterialUtilizado(material.codigo, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
                     />
                     <span class="unit">{material.unidad_medida}</span>
                   </div>
@@ -1583,14 +1794,14 @@
                     </button>
                   </div>
                   <div class="quantity-input">
-                    <label for="cantidad-material-recuperado-{material.id}">Cantidad:</label>
+                    <label for="cantidad-material-recuperado-{material.codigo}">Cantidad:</label>
                     <input 
                       type="number" 
-                      id="cantidad-material-recuperado-{material.id}"
+                      id="cantidad-material-recuperado-{material.codigo}"
                       min="0" 
                       step="0.1"
-                      value={cantidadesMaterialesRecuperados[material.id] || 0}
-                      on:input={(e) => updateCantidadMaterialRecuperado(material.id, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
+                      value={cantidadesMaterialesRecuperados[material.codigo] || 0}
+                      on:input={(e) => updateCantidadMaterialRecuperado(material.codigo, parseFloat((e.target as HTMLInputElement)?.value) || 0)}
                     />
                     <span class="unit">{material.unidad_medida}</span>
                   </div>
@@ -1703,7 +1914,7 @@
               <div class="summary-section">
                 <h4>🔧 Materiales Utilizados</h4>
                 {#each codigosMaterialesUtilizados as material}
-                  {@const cantidad = cantidadesMaterialesUtilizados[material.id] || 0}
+                  {@const cantidad = cantidadesMaterialesUtilizados[material.codigo] || 0}
                   {#if cantidad > 0}
                     <p>• {material.descripcion} ({cantidad} {material.unidad_medida})</p>
                   {/if}
@@ -1716,7 +1927,7 @@
               <div class="summary-section">
                 <h4>♻️ Materiales Recuperados</h4>
                 {#each codigosMaterialesRecuperados as material}
-                  {@const cantidad = cantidadesMaterialesRecuperados[material.id] || 0}
+                  {@const cantidad = cantidadesMaterialesRecuperados[material.codigo] || 0}
                   {#if cantidad > 0}
                     <p>• {material.descripcion} ({cantidad} {material.unidad_medida})</p>
                   {/if}
@@ -1782,7 +1993,7 @@
 <style>
   .vertical-certification-form {
     width: 100%;
-    max-width: 1400px;
+    max-width: 100%;
     margin: 0;
     padding: 0;
     background: white;
