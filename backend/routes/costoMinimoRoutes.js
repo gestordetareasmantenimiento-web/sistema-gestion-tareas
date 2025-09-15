@@ -44,19 +44,26 @@ router.put('/valor', authenticateToken, async (req, res) => {
   try {
     const { valor } = req.body;
     
-    if (!valor || isNaN(valor) || valor <= 0) {
+    console.log('Valor recibido:', valor, 'Tipo:', typeof valor);
+    
+    // Convertir a número si es string
+    const valorNumerico = parseFloat(valor);
+    
+    if (!valor || isNaN(valorNumerico) || valorNumerico <= 0) {
+      console.log('Validación falló - valor:', valor, 'valorNumerico:', valorNumerico);
       return res.status(400).json({ error: 'El valor debe ser un número positivo' });
     }
     
-    const nuevoId = await costoMinimoService.updateCostoMinimoDiario(valor);
+    console.log('Actualizando costo mínimo diario con valor:', valorNumerico);
+    const nuevoId = await costoMinimoService.updateCostoMinimoDiario(valorNumerico);
     
     res.json({
       message: 'Costo mínimo diario actualizado exitosamente',
-      data: { id: nuevoId, valor }
+      data: { id: nuevoId, valor: valorNumerico }
     });
   } catch (error) {
     console.error('Error actualizando costo mínimo diario:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
   }
 });
 

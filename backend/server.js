@@ -113,6 +113,10 @@ app.use('/api/costo-minimo', costoMinimoRoutes);
 const cuadrillaModeloRoutes = require('./routes/cuadrillaModeloRoutes');
 app.use('/api/cuadrilla-modelo', cuadrillaModeloRoutes);
 
+const adminRoutes = require('./routes/adminRoutes');
+const { authenticateToken } = require('./middleware/authMiddleware');
+app.use('/api/admin', authenticateToken, adminRoutes);
+
 
 app.get('/', (req, res) => { res.send('Servidor principal funcionando correctamente.'); });
 

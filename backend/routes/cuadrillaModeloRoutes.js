@@ -44,19 +44,26 @@ router.put('/porcentaje', authenticateToken, async (req, res) => {
   try {
     const { porcentaje } = req.body;
     
-    if (!porcentaje || isNaN(porcentaje) || porcentaje <= 0) {
+    console.log('Porcentaje recibido:', porcentaje, 'Tipo:', typeof porcentaje);
+    
+    // Convertir a número si es string
+    const porcentajeNumerico = parseFloat(porcentaje);
+    
+    if (!porcentaje || isNaN(porcentajeNumerico) || porcentajeNumerico <= 0) {
+      console.log('Validación falló - porcentaje:', porcentaje, 'porcentajeNumerico:', porcentajeNumerico);
       return res.status(400).json({ error: 'El porcentaje debe ser un número positivo' });
     }
     
-    const nuevoId = await cuadrillaModeloService.updatePorcentajeCuadrillaModelo(porcentaje);
+    console.log('Actualizando cuadrilla modelo con porcentaje:', porcentajeNumerico);
+    const nuevoId = await cuadrillaModeloService.updatePorcentajeCuadrillaModelo(porcentajeNumerico);
     
     res.json({
       message: 'Porcentaje de cuadrilla modelo actualizado exitosamente',
-      data: { id: nuevoId, porcentaje }
+      data: { id: nuevoId, porcentaje: porcentajeNumerico }
     });
   } catch (error) {
     console.error('Error actualizando porcentaje de cuadrilla modelo:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
   }
 });
 

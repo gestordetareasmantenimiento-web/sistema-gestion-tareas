@@ -34,7 +34,7 @@
       <h2>👥 Roles del Sistema</h2>
       <div class="roles-grid">
         {#each data.roles || [] as role (role.rol)}
-          <div class="role-card" on:click={() => navigateToRole(role.rol)}>
+          <div class="role-card" on:click={() => navigateToRole(role.rol)} on:keydown={(e) => e.key === 'Enter' && navigateToRole(role.rol)} role="button" tabindex="0">
             <div class="role-header">
               <h3>{role.rol}</h3>
               <span class="role-count">{role.total_usuarios} usuarios</span>

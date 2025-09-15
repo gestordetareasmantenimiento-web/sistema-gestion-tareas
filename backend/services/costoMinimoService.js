@@ -18,10 +18,29 @@ const getCostoMinimoDiario = () => {
 // Actualizar el valor del costo mínimo diario
 const updateCostoMinimoDiario = (nuevoValor) => {
   return new Promise((resolve, reject) => {
-    const sql = 'INSERT INTO costominimodiario (valor) VALUES (?)';
-    db.run(sql, [nuevoValor], function(err) {
-      if (err) reject(err);
-      else resolve(this.lastID);
+    // Primero verificar si existe un registro
+    const checkSql = 'SELECT id FROM costominimodiario ORDER BY fecha_actualizacion DESC LIMIT 1';
+    db.get(checkSql, [], (err, row) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      if (row) {
+        // Si existe, actualizar el registro existente
+        const updateSql = 'UPDATE costominimodiario SET valor = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?';
+        db.run(updateSql, [nuevoValor, row.id], function(err) {
+          if (err) reject(err);
+          else resolve(row.id);
+        });
+      } else {
+        // Si no existe, crear uno nuevo
+        const insertSql = 'INSERT INTO costominimodiario (valor) VALUES (?)';
+        db.run(insertSql, [nuevoValor], function(err) {
+          if (err) reject(err);
+          else resolve(this.lastID);
+        });
+      }
     });
   });
 };

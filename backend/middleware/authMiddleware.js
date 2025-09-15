@@ -26,7 +26,7 @@ const checkRole = (rolesPermitidos) => {
       return res.status(403).json({ message: 'Acceso denegado. Rol de usuario no encontrado.' });
     }
     const rolUsuario = req.user.rol.toLowerCase();
-    if (rolesPermitidos.map(r => r.toLowerCase()).includes(rolUsuario)) {
+    if (rolesPermitidos.map(r => r && r.toLowerCase()).includes(rolUsuario)) {
       next();
     } else {
       return res.status(403).json({ message: 'No tienes permiso para realizar esta acción.' });

@@ -18,10 +18,29 @@ const getPorcentajeCuadrillaModelo = () => {
 // Actualizar el porcentaje de cuadrilla modelo
 const updatePorcentajeCuadrillaModelo = (nuevoPorcentaje) => {
   return new Promise((resolve, reject) => {
-    const sql = 'INSERT INTO cuadrilla_modelo (porcentaje) VALUES (?)';
-    db.run(sql, [nuevoPorcentaje], function(err) {
-      if (err) reject(err);
-      else resolve(this.lastID);
+    // Primero verificar si existe un registro
+    const checkSql = 'SELECT id FROM cuadrilla_modelo ORDER BY fecha_actualizacion DESC LIMIT 1';
+    db.get(checkSql, [], (err, row) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      if (row) {
+        // Si existe, actualizar el registro existente
+        const updateSql = 'UPDATE cuadrilla_modelo SET porcentaje = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?';
+        db.run(updateSql, [nuevoPorcentaje, row.id], function(err) {
+          if (err) reject(err);
+          else resolve(row.id);
+        });
+      } else {
+        // Si no existe, crear uno nuevo
+        const insertSql = 'INSERT INTO cuadrilla_modelo (porcentaje) VALUES (?)';
+        db.run(insertSql, [nuevoPorcentaje], function(err) {
+          if (err) reject(err);
+          else resolve(this.lastID);
+        });
+      }
     });
   });
 };
