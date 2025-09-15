@@ -604,9 +604,6 @@
     <div class="header">
       <h1>Detalle: {certificado.tarea.id_tarea_texto}</h1>
       <div class="actions">
-        {#if (userRol === 'inspector' || userRol === 'supervisor de mantenimiento') && certificado.tarea.estado.toLowerCase().includes('pendiente')}
-            <a href="/task/{certificado.tarea.id}/edit" class="edit-button">Editar Certificado</a>
-        {/if}
         {#if userRol === 'inspector' && certificado.tarea.estado.toLowerCase() === 'asignada'}
             <button class="delete-button" on:click={handleDelete}>Cancelar Tarea</button>
         {/if}
