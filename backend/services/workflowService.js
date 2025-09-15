@@ -39,6 +39,23 @@ exports.observarInspector = async (req, res) => {
     res.status(500).json({ error: 'Error al procesar la observación' });
   }
 };
+
+exports.finalizarObservacion = async (req, res) => {
+  try {
+    const { correccion } = req.body;
+    const { id } = req.params;
+    const { id: id_usuario, rol } = req.user;
+    
+    const resultado = await observacionService.finalizarObservacion(
+      id, id_usuario, rol, correccion
+    );
+    
+    res.json({ message: resultado.mensaje, data: resultado });
+  } catch (error) {
+    console.error('Error al finalizar observación:', error);
+    res.status(500).json({ error: 'Error al finalizar la observación' });
+  }
+};
 exports.aprobarSupervisor = (req, res) => {
   cambiarEstadoTarea(res, req.params.id, req.user.id, 'Pendiente Aprobación Administración', 'Aprobado por Supervisor', `La tarea pasa a estado: Pendiente Aprobación Administración.`);
 };

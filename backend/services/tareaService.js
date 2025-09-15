@@ -51,6 +51,7 @@ const getAllTareas = async (req, res) => {
         whereClause: 'WHERE t.id_proveedor = ?',
         getParams: () => [id_proveedor],
         grouping: (tareas) => ({
+          todas: tareas, // Mostrar todas las tareas del proveedor
           pendientes: tareas.filter(t => t.estado === 'Asignada'),
           certificadas: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector'),
           enAprobacion: tareas.filter(t => [
@@ -68,48 +69,68 @@ const getAllTareas = async (req, res) => {
         whereClause: 'WHERE t.id_inspector = ?',
         getParams: () => [id],
         grouping: (tareas) => ({
+          todas: tareas, // Mostrar todas las tareas creadas por el inspector
           pendientes: tareas.filter(t => t.estado === 'Asignada'),
           pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector'),
           aprobados: tareas.filter(t => ['Pendiente Aprobación Supervisor', 'Pendiente Aprobación Administración', 'Pendiente Aprobación Gerente', 'Pendiente Aprobación CERCO'].includes(t.estado)),
-          observados: tareas.filter(t => t.estado === 'Observada por Inspector'),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
+          canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })
       },
       [ROLES.SUPERVISOR_MANTENIMIENTO]: {
-        whereClause: 'WHERE insp.id_supervisor = ?',
-        getParams: () => [id],
+        whereClause: 'WHERE (t.id_inspector = ? OR insp.id_supervisor = ?)',
+        getParams: () => [id, id], // Incluir tareas creadas por el supervisor Y tareas de sus inspectores
         grouping: (tareas) => ({
+          todas: tareas, // Mostrar todas las tareas del supervisor y sus inspectores
           pendientesDeProveedor: tareas.filter(t => t.estado === 'Asignada'),
           pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector'),
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Supervisor'),
           enCircuito: tareas.filter(t => !['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Aprobación Supervisor'].includes(t.estado)),
-          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada'))
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
+          canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })
       },
       [ROLES.ADMINISTRATIVO]: {
         whereClause: userRegions.length > 0 ? `WHERE t.id_region IN (${userRegions.map(() => '?').join(', ')})` : 'WHERE 1=0',
         getParams: () => userRegions.map(r => r.id),
         grouping: (tareas) => ({
+          todas: tareas, // Mostrar todas las tareas de la región
           pendientesDeWo: tareas.filter(t => !t.numero_wo && t.estado === 'Asignada'),
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Administración'),
           tareasGeneradas: tareas.filter(t => t.numero_wo && ['Asignada', 'Pendiente Certificación Inspector'].includes(t.estado)),
           aprobadasPorAdmin: tareas.filter(t => ['Pendiente Aprobación Gerente', 'Pendiente Aprobación CERCO', 'Finalizada - Aprobada'].includes(t.estado)),
           observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
+          canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })
       },
       [ROLES.GERENTE]: {
         whereClause: userRegions.length > 0 ? `WHERE t.id_region IN (${userRegions.map(() => '?').join(', ')})` : 'WHERE 1=0',
         getParams: () => userRegions.map(r => r.id),
         grouping: (tareas) => ({
-          pendientesDeAutorizacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Gerente'),
+          todas: tareas, // Mostrar todas las tareas de la región
+          pendientesDeAutorizacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Gerente'), // Filtro por defecto
+          pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Administración'),
+          enCircuito: tareas.filter(t => !['Pendiente Aprobación Gerente', 'Pendiente Aprobación Administración'].includes(t.estado)),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
+          canceladas: tareas.filter(t => t.estado === 'Cancelada'),
+          // Para el gerente, mostrar por defecto las pendientes de autorización
+          porDefecto: tareas.filter(t => t.estado === 'Pendiente Aprobación Gerente')
         })
       },
       [ROLES.CERCO]: {
-        whereClause: '',
+        whereClause: '', // Sin filtros - ver todo globalmente
         getParams: () => [],
         grouping: (tareas) => ({
+          todas: tareas, // Mostrar todas las tareas globalmente
           pendientesDeRevisionFinal: tareas.filter(t => t.estado === 'Pendiente Aprobación CERCO'),
           observados: tareas.filter(t => t.estado === 'Observada por CERCO'),
-          pasadasAPago: tareas.filter(t => t.estado === 'Finalizada - Aprobada')
+          pasadasAPago: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
+          enCircuito: tareas.filter(t => !['Pendiente Aprobación CERCO', 'Observada por CERCO', 'Finalizada - Aprobada'].includes(t.estado)),
+          canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })
       }
     };
@@ -117,7 +138,16 @@ const getAllTareas = async (req, res) => {
     const supervisorRegionalConfig = {
         whereClause: userRegions.length > 0 ? `WHERE t.id_region IN (${userRegions.map(() => '?').join(', ')})` : 'WHERE 1=0',
         getParams: () => userRegions.map(r => r.id),
-        grouping: (tareas) => ({ todas: tareas })
+        grouping: (tareas) => ({ 
+          todas: tareas, // Mostrar todas las tareas de la región
+          pendientes: tareas.filter(t => t.estado === 'Asignada'),
+          pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector'),
+          pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Supervisor'),
+          enCircuito: tareas.filter(t => !['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Aprobación Supervisor'].includes(t.estado)),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
+          canceladas: tareas.filter(t => t.estado === 'Cancelada')
+        })
     };
   
     let config;
@@ -270,6 +300,20 @@ const updateTarea = async (req, res) => {
     }
     
     if (numero_wo !== undefined && numero_wo !== null) {
+        // Validar que el número de WO no esté duplicado
+        const woExistente = await new Promise((resolve, reject) => {
+            db.get(`SELECT id, id_tarea_texto FROM tareas WHERE numero_wo = ? AND id != ?`, [numero_wo, id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+        
+        if (woExistente) {
+            return res.status(400).json({ 
+                error: `El número de WO "${numero_wo}" ya está asignado a la tarea ${woExistente.id_tarea_texto}. No se permiten números de WO duplicados.` 
+            });
+        }
+        
         setClauses.push("numero_wo = ?");
         params.push(numero_wo);
     }
@@ -659,6 +703,155 @@ const getHistorialTarea = async (req, res) => {
   }
 };
 
+// Función para editar certificado cuando hay observación
+const editarCertificado = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const id_usuario = req.user.id;
+    
+    // Verificar que la tarea esté en estado de observación
+    const tarea = await new Promise((resolve, reject) => {
+      const sql = `SELECT estado FROM tareas WHERE id = ?`;
+      db.get(sql, [id], (err, row) => err ? reject(err) : resolve(row));
+    });
+    
+    if (!tarea) {
+      return res.status(404).json({ error: 'Tarea no encontrada.' });
+    }
+    
+    if (!tarea.estado.toLowerCase().includes('observada')) {
+      return res.status(400).json({ error: 'Solo se pueden editar certificados de tareas observadas.' });
+    }
+    
+    // Extraer datos del FormData
+    const fecha_inicio = req.body.fecha_inicio;
+    const fecha_fin = req.body.fecha_fin;
+    const observaciones = req.body.observaciones || '';
+    const mano_de_obra = JSON.parse(req.body.mano_de_obra || '[]');
+    const materiales_utilizados = JSON.parse(req.body.materiales_utilizados || '[]');
+    const materiales_recuperados = JSON.parse(req.body.materiales_recuperados || '[]');
+    
+    // Validar datos obligatorios
+    if (!fecha_inicio || !fecha_fin) {
+      return res.status(400).json({ error: 'Las fechas de inicio y fin son obligatorias.' });
+    }
+    
+    // Actualizar la tarea con las fechas y cambiar estado a "Pendiente Certificación Inspector"
+    await new Promise((resolve, reject) => {
+      const sql = `UPDATE tareas SET fecha_inicio = ?, fecha_fin = ?, estado = ? WHERE id = ?`;
+      db.run(sql, [fecha_inicio, fecha_fin, 'Pendiente Certificación Inspector', id], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      });
+    });
+    
+    // Eliminar datos anteriores del certificado
+    await new Promise((resolve, reject) => {
+      const sql = `DELETE FROM tarea_mano_de_obra WHERE id_tarea = ?`;
+      db.run(sql, [id], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      });
+    });
+    
+    await new Promise((resolve, reject) => {
+      const sql = `DELETE FROM tarea_materiales WHERE id_tarea = ?`;
+      db.run(sql, [id], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      });
+    });
+    
+    // Procesar mano de obra con cálculo automático del costo mínimo diario
+    let manoDeObraProcesada = mano_de_obra || [];
+    if (manoDeObraProcesada.length > 0) {
+      try {
+        const resultadoCostoMinimo = await costoMinimoService.procesarManoDeObraConCostoMinimo(manoDeObraProcesada);
+        manoDeObraProcesada = resultadoCostoMinimo.manoDeObraProcesada;
+        console.log('Costo mínimo diario:', resultadoCostoMinimo.mensaje);
+        
+        // Procesar cuadrilla modelo después del costo mínimo diario
+        const resultadoCuadrillaModelo = await cuadrillaModeloService.procesarManoDeObraConCuadrillaModelo(manoDeObraProcesada);
+        manoDeObraProcesada = resultadoCuadrillaModelo.manoDeObraProcesada;
+        console.log('Cuadrilla modelo:', resultadoCuadrillaModelo.mensaje);
+      } catch (error) {
+        console.error('Error procesando cálculos automáticos:', error);
+        return res.status(400).json({ error: error.message });
+      }
+    }
+    
+    // Guardar mano de obra procesada
+    if (manoDeObraProcesada && manoDeObraProcesada.length > 0) {
+      for (const item of manoDeObraProcesada) {
+        await new Promise((resolve, reject) => {
+          // Para el costo mínimo diario, usar el precio calculado en lugar del precio original
+          const precioFinal = item.precioCalculado !== undefined ? item.precioCalculado : item.precio;
+          const sql = `INSERT INTO tarea_mano_de_obra (id_tarea, id_mano_de_obra, cantidad, precio_calculado) VALUES (?, ?, ?, ?)`;
+          db.run(sql, [id, item.id, item.cantidad, precioFinal], function(err) {
+            if (err) reject(err);
+            else resolve(this.lastID);
+          });
+        });
+      }
+    }
+    
+    // Guardar materiales utilizados
+    if (materiales_utilizados && materiales_utilizados.length > 0) {
+      for (const item of materiales_utilizados) {
+        await new Promise((resolve, reject) => {
+          const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
+          db.run(sql, [id, item.id, item.cantidad, 'utilizado'], function(err) {
+            if (err) reject(err);
+            else resolve(this.lastID);
+          });
+        });
+      }
+    }
+    
+    // Guardar materiales recuperados
+    if (materiales_recuperados && materiales_recuperados.length > 0) {
+      for (const item of materiales_recuperados) {
+        await new Promise((resolve, reject) => {
+          const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
+          db.run(sql, [id, item.id, item.cantidad, 'recuperado'], function(err) {
+            if (err) reject(err);
+            else resolve(this.lastID);
+          });
+        });
+      }
+    }
+    
+    // Procesar archivos adjuntos si existen (agregar a los existentes)
+    if (req.files && req.files.length > 0) {
+      for (const archivo of req.files) {
+        await new Promise((resolve, reject) => {
+          const sql = `INSERT INTO tarea_adjuntos (id_tarea, nombre_archivo, url_archivo) VALUES (?, ?, ?)`;
+          db.run(sql, [id, archivo.originalname, `/uploads/${archivo.filename}`], function(err) {
+            if (err) reject(err);
+            else resolve(this.lastID);
+          });
+        });
+      }
+    }
+    
+    // Registrar en el historial
+    await historialService.registrar(id, id_usuario, 'Certificado Editado', `Certificado editado y corregido. Tarea vuelve a estado: Pendiente Certificación Inspector.`);
+    
+    res.json({ 
+      message: 'Certificado editado exitosamente. La tarea vuelve a estado: Pendiente Certificación Inspector.',
+      data: { 
+        estado: 'Pendiente Certificación Inspector',
+        fecha_inicio,
+        fecha_fin
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error al editar certificado:', error);
+    res.status(500).json({ error: 'Error interno del servidor al editar el certificado.' });
+  }
+};
+
 module.exports = {
     getAllTareas,
     getTareaById,
@@ -667,6 +860,7 @@ module.exports = {
     deleteTarea,
     getCertificadoByTareaId,
     emitirCertificado,
+    editarCertificado,
     getAdjuntos,
     addAdjunto,
     exportarMateriales,

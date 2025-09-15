@@ -21,8 +21,8 @@
   
   export let data: PageData;
   
-  // Combinar todas las tareas de todas las columnas
-  $: todasLasTareas = [
+  // Usar la columna "todas" si existe, sino combinar todas las columnas
+  $: todasLasTareas = data.columnas?.todas || [
     ...(data.columnas?.pendientes || []),
     ...(data.columnas?.certificadas || []),
     ...(data.columnas?.enAprobacion || []),

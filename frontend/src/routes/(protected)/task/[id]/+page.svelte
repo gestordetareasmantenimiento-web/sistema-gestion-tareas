@@ -9,6 +9,7 @@
   import CertificationProgress from '$lib/components/CertificationProgress.svelte';
   import TaskLifecycleTimeline from '$lib/components/TaskLifecycleTimeline.svelte';
   import AccionTareaPanel from '$lib/components/AccionTareaPanel.svelte';
+  import VerticalCertificationForm from '$lib/components/VerticalCertificationForm.svelte';
   import { onDestroy } from 'svelte';
   import { showSuccess, showError, showConfirm } from '$lib/services/modalService';
   export let data;
@@ -32,6 +33,9 @@
   // Variables para el sistema de observaciones
   let infoObservacion: any = null;
   let isLoadingObservacion = false;
+  
+  // Variables para edición de certificados
+  let showEditCertificateModal = false;
   
   // --- Definiciones de Roles ---
   const supervisorRoles = [
@@ -215,11 +219,14 @@
   }
 
   // --- FUNCIÓN DE DESCARGA DE ARCHIVOS ---
-  async function handleDownload(event) {
+  async function handleDownload(event: Event) {
     event.preventDefault(); // Prevenir el comportamiento por defecto del enlace
     
-    const url = event.currentTarget.href;
-    const fileName = event.currentTarget.download;
+    const target = event.currentTarget as HTMLAnchorElement;
+    if (!target) return;
+    
+    const url = target.href;
+    const fileName = target.download;
     
     try {
       console.log('Descargando archivo:', fileName);
@@ -733,6 +740,265 @@
       </div>
     </div>
 
+    <!-- ================================================================= -->
+    <!-- DETALLES DEL CERTIFICADO - SIEMPRE QUE EXISTA UN CERTIFICADO -->
+    <!-- ================================================================= -->
+    {#if certificado && certificado.tarea && 
+         (certificado.mano_de_obra?.length > 0 || 
+          certificado.materialesUtilizados?.length > 0 || 
+          certificado.materialesRecuperados?.length > 0 || 
+          certificado.adjuntos?.length > 0 ||
+          certificado.tarea.fecha_inicio || 
+          certificado.tarea.fecha_fin)}
+      
+      <div class="certificado-details-section">
+        <h2>📋 Detalles del Certificado Emitido</h2>
+        <p class="certificado-description">
+          Certificado emitido por el proveedor con los siguientes detalles:
+        </p>
+        
+        <!-- Información de fechas del certificado -->
+        {#if certificado.tarea.fecha_inicio || certificado.tarea.fecha_fin}
+          <div class="certificado-fechas">
+            <h3>📅 Fechas del Trabajo</h3>
+            <div class="fechas-info">
+              {#if certificado.tarea.fecha_inicio}
+                <div class="fecha-item">
+                  <strong>Fecha de Inicio:</strong> {new Date(certificado.tarea.fecha_inicio).toLocaleDateString()}
+                </div>
+              {/if}
+              {#if certificado.tarea.fecha_fin}
+                <div class="fecha-item">
+                  <strong>Fecha de Fin:</strong> {new Date(certificado.tarea.fecha_fin).toLocaleDateString()}
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Mano de Obra Certificada -->
+        <div class="certificado-section">
+          <h3>👷 Mano de Obra Certificada</h3>
+          {#if certificado.mano_de_obra && certificado.mano_de_obra.length > 0}
+            <div class="table-container">
+              <table class="certificado-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Unidad de Medida</th>
+                    <th>Precio Unitario</th>
+                    <th>Precio Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each certificado.mano_de_obra as item}
+                    <tr>
+                      <td class="codigo-cell">{item.codigo}</td>
+                      <td class="descripcion-cell">{item.descripcion}</td>
+                      <td class="cantidad-cell">{item.cantidad}</td>
+                      <td class="unidad-cell">{item.unidad_medida}</td>
+                      <td class="precio-cell">${item.precio?.toLocaleString() || 'N/A'}</td>
+                      <td class="total-cell">${((item.cantidad || 0) * (item.precio || 0)).toLocaleString()}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {:else}
+            <div class="no-data-message">
+              <p>📝 No se registró mano de obra en este certificado.</p>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Materiales Utilizados -->
+        <div class="certificado-section">
+          <h3>🔧 Materiales Utilizados</h3>
+          {#if certificado.materialesUtilizados && certificado.materialesUtilizados.length > 0}
+            <div class="table-container">
+              <table class="certificado-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Unidad de Medida</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each certificado.materialesUtilizados as item}
+                    <tr>
+                      <td class="codigo-cell">{item.codigo}</td>
+                      <td class="descripcion-cell">{item.descripcion}</td>
+                      <td class="cantidad-cell">{item.cantidad}</td>
+                      <td class="unidad-cell">{item.unidad_medida}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {:else}
+            <div class="no-data-message">
+              <p>📝 No se registraron materiales utilizados en este certificado.</p>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Materiales Recuperados -->
+        <div class="certificado-section">
+          <h3>♻️ Materiales Recuperados</h3>
+          {#if certificado.materialesRecuperados && certificado.materialesRecuperados.length > 0}
+            <div class="table-container">
+              <table class="certificado-table">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Unidad de Medida</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each certificado.materialesRecuperados as item}
+                    <tr>
+                      <td class="codigo-cell">{item.codigo}</td>
+                      <td class="descripcion-cell">{item.descripcion}</td>
+                      <td class="cantidad-cell">{item.cantidad}</td>
+                      <td class="unidad-cell">{item.unidad_medida}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {:else}
+            <div class="no-data-message">
+              <p>📝 No se registraron materiales recuperados en este certificado.</p>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Adjuntos del Certificado con Preview -->
+        <div class="certificado-section">
+          <h3>📎 Adjuntos del Certificado</h3>
+          {#if certificado.adjuntos && certificado.adjuntos.length > 0}
+            <div class="adjuntos-grid">
+              {#each certificado.adjuntos as adjunto}
+                <div class="adjunto-item">
+                  <div class="adjunto-preview">
+                    {#if adjunto.nombre_archivo.match(/\.(jpe?g|png|gif|webp|svg)$/i)}
+                      <div class="image-preview">
+                        <img 
+                          src="http://localhost:3000{adjunto.url_archivo}" 
+                          alt="{adjunto.nombre_archivo}"
+                          class="preview-image"
+                          loading="lazy"
+                        />
+                        <div class="image-overlay">
+                          <span class="file-type">🖼️ Imagen</span>
+                        </div>
+                      </div>
+                    {:else if adjunto.nombre_archivo.match(/\.pdf$/i)}
+                      <div class="file-preview pdf-preview">
+                        <div class="file-icon-large">📄</div>
+                        <span class="file-type">PDF</span>
+                      </div>
+                    {:else if adjunto.nombre_archivo.match(/\.(xlsx?|csv)$/i)}
+                      <div class="file-preview excel-preview">
+                        <div class="file-icon-large">📊</div>
+                        <span class="file-type">Excel</span>
+                      </div>
+                    {:else if adjunto.nombre_archivo.match(/\.docx?$/i)}
+                      <div class="file-preview word-preview">
+                        <div class="file-icon-large">📝</div>
+                        <span class="file-type">Word</span>
+                      </div>
+                    {:else}
+                      <div class="file-preview other-preview">
+                        <div class="file-icon-large">📎</div>
+                        <span class="file-type">Archivo</span>
+                      </div>
+                    {/if}
+                  </div>
+                  <div class="adjunto-info">
+                    <div class="adjunto-name" title="{adjunto.nombre_archivo}">
+                      {adjunto.nombre_archivo}
+                    </div>
+                    <div class="adjunto-actions">
+                      <a 
+                        href="http://localhost:3000{adjunto.url_archivo}" 
+                        download="{adjunto.nombre_archivo}" 
+                        class="download-link"
+                        on:click={handleDownload}
+                        title="Descargar archivo"
+                      >
+                        ⬇️ Descargar
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {:else}
+            <div class="no-data-message">
+              <p>📝 No se adjuntaron archivos en este certificado.</p>
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- SECCIÓN DE OBSERVACIÓN DEL INSPECTOR -->
+    <!-- ================================================================= -->
+    {#if userRol === 'proveedor' && certificado.tarea.estado.toLowerCase().includes('observada')}
+      <div class="observacion-inspector-panel">
+        <div class="observacion-header">
+          <h3>⚠️ Observación del Inspector</h3>
+          <span class="estado-badge observada">{certificado.tarea.estado}</span>
+        </div>
+        
+        <div class="observacion-details">
+          {#if infoObservacion}
+            <div class="observacion-item">
+              <strong>Observador:</strong> {infoObservacion.observador_original}
+            </div>
+            <div class="observacion-item">
+              <strong>Fecha:</strong> {new Date(infoObservacion.fecha_observacion).toLocaleDateString()}
+            </div>
+            <div class="observacion-item">
+              <strong>Observación:</strong> {infoObservacion.observacion}
+            </div>
+          {:else}
+            <div class="observacion-item">
+              <p>No se pudo cargar la información de la observación.</p>
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- SECCIÓN DE EDICIÓN DE CERTIFICADO -->
+    <!-- ================================================================= -->
+    {#if userRol === 'proveedor' && certificado.tarea.estado.toLowerCase().includes('observada')}
+      <div class="editar-certificado-panel">
+        <div class="editar-header">
+          <h3>✏️ Editar Certificado</h3>
+          <p>Revisa la observación del inspector y edita el certificado con las correcciones necesarias.</p>
+        </div>
+        
+        <div class="editar-actions">
+          <button 
+            class="btn btn-warning btn-large" 
+            on:click={() => showEditCertificateModal = true}
+            disabled={isProcessingAction}
+          >
+            📝 Editar Certificado
+          </button>
+        </div>
+      </div>
+    {/if}
+
       <!-- ================================================================= -->
       <!-- PANEL DE ACCIÓN UNIFICADO - AL FINAL PARA REVISIÓN COMPLETA -->
       <!-- ================================================================= -->
@@ -776,6 +1042,27 @@
       <p>Cargando detalles de la tarea...</p>
     </div>
   {/if}
+
+  <!-- Modal de Edición de Certificado -->
+  {#if showEditCertificateModal}
+    <div class="modal-overlay edit-modal-overlay">
+      <div class="modal-content edit-modal">
+        <VerticalCertificationForm 
+          tarea={certificado.tarea}
+          taskId={certificado.tarea.id}
+          manoDeObra={[]}
+          materiales={[]}
+          isEditMode={true}
+          certificadoData={certificado}
+          on:certificadoEmitido={() => {
+            showEditCertificateModal = false;
+            // Recargar la página para mostrar los cambios
+            window.location.reload();
+          }}
+        />
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -810,7 +1097,7 @@
   /* --- Estilos Generales --- */
   .detalle-container { 
     font-family: sans-serif; 
-    max-width: 900px; 
+    max-width: 1400px; 
     margin: 2rem auto; 
     padding: 0 1rem;
     min-height: 100vh;
@@ -1200,5 +1487,633 @@
   /* Asegurar que el body pueda hacer scroll */
   :global(body) {
     overflow-x: hidden;
+  }
+
+  /* ================================================================= */
+  /* ESTILOS PARA DETALLES DEL CERTIFICADO */
+  /* ================================================================= */
+  
+  .certificado-details-section {
+    margin-top: 2rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .certificado-details-section h2 {
+    color: #495057;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 0.5rem;
+  }
+
+  .certificado-description {
+    color: #6c757d;
+    font-style: italic;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: rgba(0, 123, 255, 0.1);
+    border-left: 4px solid #007bff;
+    border-radius: 4px;
+  }
+
+  .certificado-section {
+    margin-bottom: 2.5rem;
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .certificado-fechas {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .certificado-fechas h3 {
+    margin: 0 0 0.75rem 0;
+    color: #495057;
+    font-size: 1rem;
+  }
+
+  .fechas-info {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .fecha-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .fecha-item strong {
+    color: #495057;
+    font-size: 0.9rem;
+  }
+
+  .fecha-item span {
+    color: #6c757d;
+    font-size: 0.95rem;
+  }
+
+  .certificado-section h3 {
+    color: #343a40;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background: white;
+    margin-top: 1rem;
+  }
+
+  .certificado-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    font-size: 0.9rem;
+  }
+
+  .certificado-table thead {
+    background: #2c3e50 !important;
+    color: white !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .certificado-table th {
+    padding: 1rem 0.75rem;
+    text-align: left;
+    font-weight: 700;
+    border: none;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white !important;
+    background: #2c3e50 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .certificado-table th:last-child {
+    border-right: none;
+  }
+
+  /* Estilos adicionales para asegurar contraste en encabezados */
+  .certificado-table thead tr {
+    background: #2c3e50 !important;
+  }
+
+  .certificado-table thead tr th {
+    background: #2c3e50 !important;
+    color: white !important;
+    font-weight: 700 !important;
+  }
+
+  /* Forzar estilos en caso de conflictos */
+  .table-container .certificado-table thead th {
+    background: #2c3e50 !important;
+    color: white !important;
+    font-weight: 700 !important;
+  }
+
+  /* Estilos globales para encabezados de certificado */
+  :global(.certificado-table thead) {
+    background: #2c3e50 !important;
+  }
+
+  :global(.certificado-table thead th) {
+    background: #2c3e50 !important;
+    color: white !important;
+    font-weight: 700 !important;
+  }
+
+  .certificado-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: top;
+    background-color: white;
+  }
+
+  .certificado-table tbody tr:nth-child(even) td {
+    background-color: #f8f9fa;
+  }
+
+  .certificado-table tbody tr:hover td {
+    background-color: #e3f2fd;
+    transition: background-color 0.2s ease;
+  }
+
+  .certificado-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Estilos específicos para celdas */
+  .codigo-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #0056b3;
+    background: rgba(0, 86, 179, 0.08);
+    border-radius: 4px;
+    padding: 0.5rem;
+    text-align: center;
+    min-width: 100px;
+    border: 1px solid rgba(0, 86, 179, 0.2);
+  }
+
+  .descripcion-cell {
+    max-width: 500px;
+    min-width: 300px;
+    word-wrap: break-word;
+    line-height: 1.4;
+    white-space: normal;
+    color: #343a40;
+    font-weight: 500;
+  }
+
+  .cantidad-cell {
+    text-align: center;
+    font-weight: 700;
+    color: #155724;
+    background: rgba(21, 87, 36, 0.08);
+    border-radius: 4px;
+    min-width: 80px;
+    border: 1px solid rgba(21, 87, 36, 0.2);
+  }
+
+  .unidad-cell {
+    text-align: center;
+    color: #495057;
+    font-style: italic;
+    font-weight: 500;
+    min-width: 80px;
+    background: rgba(73, 80, 87, 0.05);
+    border-radius: 4px;
+  }
+
+  .precio-cell, .total-cell {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    color: #155724;
+    background: rgba(21, 87, 36, 0.08);
+    border-radius: 4px;
+    min-width: 100px;
+    border: 1px solid rgba(21, 87, 36, 0.2);
+  }
+
+  /* Estilos para adjuntos con preview */
+  .adjuntos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .adjunto-item {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .adjunto-item:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .adjunto-preview {
+    height: 150px;
+    position: relative;
+    overflow: hidden;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .image-preview {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .image-preview:hover .preview-image {
+    transform: scale(1.05);
+  }
+
+  .image-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+    color: white;
+    padding: 0.5rem;
+    text-align: center;
+  }
+
+  .file-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 0.5rem;
+  }
+
+  .file-icon-large {
+    font-size: 3rem;
+    opacity: 0.7;
+  }
+
+  .file-type {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .pdf-preview {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+  }
+
+  .excel-preview {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    color: white;
+  }
+
+  .word-preview {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+  }
+
+  .other-preview {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+  }
+
+  .adjunto-info {
+    padding: 1rem;
+  }
+
+  .adjunto-name {
+    font-weight: 500;
+    color: #343a40;
+    margin-bottom: 0.5rem;
+    word-break: break-word;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .adjunto-actions {
+    display: flex;
+    justify-content: center;
+  }
+
+  .download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .download-link:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+  }
+
+  /* Estilos para mensajes de "no hay datos" */
+  .no-data-message {
+    text-align: center;
+    padding: 2rem;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    margin: 1rem 0;
+  }
+
+  .no-data-message p {
+    color: #6c757d;
+    font-style: italic;
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  /* Responsive para móviles */
+  @media (max-width: 768px) {
+    .certificado-details-section {
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+
+    .certificado-section {
+      padding: 1rem;
+    }
+
+    .certificado-table {
+      font-size: 0.8rem;
+    }
+
+    .certificado-table th,
+    .certificado-table td {
+      padding: 0.5rem 0.25rem;
+    }
+
+    .adjuntos-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .adjunto-preview {
+      height: 120px;
+    }
+
+    .file-icon-large {
+      font-size: 2rem;
+    }
+  }
+
+  /* ================================================================= */
+  /* ESTILOS PARA PANELES DE OBSERVACIÓN Y EDICIÓN SEPARADOS */
+  /* ================================================================= */
+  
+  .observacion-inspector-panel {
+    background: #fff3cd;
+    border: 2px solid #ffeaa7;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 2rem 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .observacion-inspector-panel .observacion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #ffeaa7;
+  }
+  
+  .observacion-inspector-panel .observacion-header h3 {
+    margin: 0;
+    color: #856404;
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+  
+  .observacion-inspector-panel .estado-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  
+  .observacion-inspector-panel .estado-badge.observada {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+  
+  .observacion-inspector-panel .observacion-details {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid #e9ecef;
+  }
+  
+  .observacion-inspector-panel .observacion-item {
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  
+  .observacion-inspector-panel .observacion-item strong {
+    color: #495057;
+    font-weight: 600;
+  }
+  
+  .editar-certificado-panel {
+    background: #e7f3ff;
+    border: 2px solid #b3d9ff;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 2rem 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  .editar-certificado-panel .editar-header h3 {
+    margin: 0 0 0.5rem 0;
+    color: #0056b3;
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+  
+  .editar-certificado-panel .editar-header p {
+    margin: 0 0 2rem 0;
+    color: #6c757d;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  
+  .editar-certificado-panel .editar-actions {
+    display: flex;
+    justify-content: center;
+  }
+  
+  .editar-certificado-panel .btn {
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+  }
+  
+  .editar-certificado-panel .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .editar-certificado-panel .btn-warning {
+    background: #ffc107;
+    color: #212529;
+  }
+  
+  .editar-certificado-panel .btn-warning:hover:not(:disabled) {
+    background: #e0a800;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+  }
+  
+  .editar-certificado-panel .btn-large {
+    padding: 1.2rem 2.5rem;
+    font-size: 1.2rem;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .observacion-inspector-panel,
+    .editar-certificado-panel {
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    
+    .observacion-inspector-panel .observacion-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    
+    .observacion-inspector-panel .observacion-header h3 {
+      font-size: 1.2rem;
+    }
+    
+    .editar-certificado-panel .editar-header h3 {
+      font-size: 1.2rem;
+    }
+    
+    .editar-certificado-panel .btn-large {
+      padding: 1rem 1.5rem;
+      font-size: 1.1rem;
+    }
+  }
+
+  /* ================================================================= */
+  /* ESTILOS PARA MODAL DE EDICIÓN DE CERTIFICADO */
+  /* ================================================================= */
+  
+  .edit-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: white !important;
+    z-index: 1000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: block !important;
+    justify-content: unset !important;
+    align-items: unset !important;
+    backdrop-filter: none !important;
+  }
+  
+  .edit-modal-overlay .edit-modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    background: white !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  
+  /* Ocultar cualquier botón de cerrar en el modal de edición */
+  .edit-modal-overlay .close-button,
+  .edit-modal-overlay button[class*="close"],
+  .edit-modal-overlay .modal-close,
+  .edit-modal-overlay .btn-close {
+    display: none !important;
   }
 </style>

@@ -9,6 +9,10 @@
   export let manoDeObra: any[] = [];
   export let materiales: any[] = [];
   
+  // Props para modo edición
+  export let isEditMode = false;
+  export let certificadoData: any = null; // Datos del certificado existente
+  
   // Estados del formulario
   let currentStep = 1;
   let isSubmitting = false;
@@ -220,6 +224,12 @@
           favoritosMaterialesRecuperados = favoritosMaterialesRecuperadosData.data || [];
         }
 
+        // Cargar datos del certificado existente si está en modo edición
+        if (isEditMode && certificadoData) {
+          console.log('🔄 Cargando datos del certificado existente...', certificadoData);
+          loadExistingCertificateData();
+        }
+
         // Cargar mano de obra y materiales solo si están vacíos
         if (manoDeObra.length === 0 || materiales.length === 0) {
           console.log('🔄 Cargando mano de obra y materiales...');
@@ -251,6 +261,94 @@
     cargarCostoMinimoDiario();
     cargarPorcentajeCuadrillaModelo();
   });
+
+  // Función para cargar datos del certificado existente en modo edición
+  function loadExistingCertificateData() {
+    if (!certificadoData) return;
+    
+    console.log('📋 Cargando datos del certificado existente:', certificadoData);
+    
+    // Cargar fechas
+    if (certificadoData.tarea?.fecha_inicio) {
+      fechaInicio = certificadoData.tarea.fecha_inicio;
+    }
+    if (certificadoData.tarea?.fecha_fin) {
+      fechaFin = certificadoData.tarea.fecha_fin;
+    }
+    if (certificadoData.tarea?.observaciones) {
+      observaciones = certificadoData.tarea.observaciones;
+    }
+    
+    // Cargar mano de obra
+    if (certificadoData.mano_de_obra && Array.isArray(certificadoData.mano_de_obra)) {
+      codigosManoDeObraSeleccionados = certificadoData.mano_de_obra.map((item: any) => ({
+        codigo: item.codigo,
+        descripcion: item.descripcion,
+        unidad_medida: item.unidad_medida,
+        precio_unitario: item.precio_unitario
+      }));
+      
+      // Cargar cantidades
+      certificadoData.mano_de_obra.forEach((item: any) => {
+        cantidadesManoDeObra[item.codigo] = item.cantidad || 0;
+      });
+    }
+    
+    // Cargar materiales utilizados
+    if (certificadoData.materialesUtilizados && Array.isArray(certificadoData.materialesUtilizados)) {
+      codigosMaterialesUtilizados = certificadoData.materialesUtilizados.map((item: any) => ({
+        codigo: item.codigo,
+        descripcion: item.descripcion,
+        unidad_medida: item.unidad_medida,
+        precio_unitario: item.precio_unitario
+      }));
+      
+      // Cargar cantidades
+      certificadoData.materialesUtilizados.forEach((item: any) => {
+        cantidadesMaterialesUtilizados[item.codigo] = item.cantidad || 0;
+      });
+    }
+    
+    // Cargar materiales recuperados
+    if (certificadoData.materialesRecuperados && Array.isArray(certificadoData.materialesRecuperados)) {
+      codigosMaterialesRecuperados = certificadoData.materialesRecuperados.map((item: any) => ({
+        codigo: item.codigo,
+        descripcion: item.descripcion,
+        unidad_medida: item.unidad_medida,
+        precio_unitario: item.precio_unitario
+      }));
+      
+      // Cargar cantidades
+      certificadoData.materialesRecuperados.forEach((item: any) => {
+        cantidadesMaterialesRecuperados[item.codigo] = item.cantidad || 0;
+      });
+    }
+    
+    console.log('✅ Datos del certificado cargados:', {
+      fechaInicio,
+      fechaFin,
+      observaciones,
+      codigosManoDeObraSeleccionados,
+      codigosMaterialesUtilizados,
+      codigosMaterialesRecuperados
+    });
+    
+    // Forzar recálculo de totales después de cargar los datos
+    // Esto se hace modificando las variables reactivas para que se disparen los cálculos
+    setTimeout(() => {
+      // Forzar reactividad modificando las cantidades
+      const tempCantidades = { ...cantidadesManoDeObra };
+      cantidadesManoDeObra = {};
+      cantidadesManoDeObra = tempCantidades;
+      
+      // También forzar reactividad en los códigos seleccionados
+      const tempCodigos = [...codigosManoDeObraSeleccionados];
+      codigosManoDeObraSeleccionados = [];
+      codigosManoDeObraSeleccionados = tempCodigos;
+      
+      console.log('🔄 Forzando recálculo de totales...');
+    }, 200);
+  }
 
   // Funciones de navegación
   async function nextStep() {
@@ -685,36 +783,53 @@
         const userRole = payload.rol;
         
         console.log('🔍 Usuario rol:', userRole);
+        console.log('🔍 Payload completo:', payload);
         
         // Navegar al dashboard correspondiente según el rol
-        switch (userRole) {
+        let targetRoute = '/dashboard'; // Ruta por defecto
+        
+        // Normalizar el rol para comparación
+        const normalizedRole = userRole.toLowerCase().trim();
+        console.log('🔍 Rol normalizado:', normalizedRole);
+        
+        switch (normalizedRole) {
           case 'proveedor':
-            window.location.href = '/proveedor';
+            targetRoute = '/proveedor/dashboard';
             break;
           case 'inspector':
-            window.location.href = '/inspector';
+            targetRoute = '/dashboard';
             break;
           case 'supervisor de mantenimiento':
-            window.location.href = '/supervisor';
+            targetRoute = '/supervisor/dashboard';
             break;
           case 'supervisor de disponibilidad':
           case 'supervisor de soporte':
           case 'supervisor de provisión':
-            window.location.href = '/supervisor';
+            targetRoute = '/supervisor/dashboard';
             break;
           case 'administrativo':
-            window.location.href = '/admin';
+            targetRoute = '/admin/dashboard';
             break;
           case 'gerente':
-            window.location.href = '/gerente';
+            targetRoute = '/gerente/dashboard';
             break;
           case 'cerco':
-            window.location.href = '/cerco';
+            targetRoute = '/cerco/dashboard';
             break;
           default:
-            console.warn('Rol no reconocido:', userRole);
-            window.location.href = '/';
+            console.warn('Rol no reconocido:', normalizedRole);
+            targetRoute = '/dashboard';
         }
+        
+        console.log('🚀 Navegando a:', targetRoute);
+        // Usar window.location para forzar una navegación completa
+        window.location.href = targetRoute;
+        
+        // Recargar la página después de un breve delay para asegurar que la navegación se complete
+        setTimeout(() => {
+          console.log('🔄 Recargando página para actualizar datos...');
+          window.location.reload();
+        }, 500);
       } else {
         console.error('No token found');
         window.location.href = '/';
@@ -791,8 +906,14 @@
       console.log('🔍 ID de tarea para certificar:', tareaId);
       console.log('🚀 Enviando certificado...', { tareaId, token: token ? 'Presente' : 'Ausente' });
       
-      const response = await fetch(`http://localhost:3000/api/tareas/${tareaId}/emitir-certificado`, {
-        method: 'POST',
+      // Determinar endpoint y método según el modo
+      const endpoint = isEditMode 
+        ? `http://localhost:3000/api/tareas/${tareaId}/editar-certificado`
+        : `http://localhost:3000/api/tareas/${tareaId}/emitir-certificado`;
+      const method = isEditMode ? 'PUT' : 'POST';
+      
+      const response = await fetch(endpoint, {
+        method: method,
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -803,7 +924,8 @@
       
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Certificado emitido exitosamente:', result);
+        const successMessage = isEditMode ? '✅ Certificado editado exitosamente:' : '✅ Certificado emitido exitosamente:';
+        console.log(successMessage, result);
         showSuccessModal = true;
         // Usar tareaId que ya tenemos disponible
         dispatch('certificadoEmitido', { tarea: tareaId });
@@ -831,7 +953,7 @@
   {#if showSuccessModal}
     <div class="success-screen">
       <div class="success-icon">🎉</div>
-      <h2>¡Certificado Emitido Exitosamente!</h2>
+      <h2>{isEditMode ? '¡Certificado Editado Exitosamente!' : '¡Certificado Emitido Exitosamente!'}</h2>
       <p>Tu certificado ha sido enviado y está siendo revisado por el inspector.</p>
       <button class="success-btn" on:click={handleBackToDashboard}>
         Volver al Dashboard
@@ -845,7 +967,7 @@
           ← Volver a la tarea
         </button>
         <div class="header-title">
-          <h2>📋 Certificado de Trabajo</h2>
+          <h2>{isEditMode ? '✏️ Editar Certificado de Trabajo' : '📋 Certificado de Trabajo'}</h2>
           <p>Tarea: {tarea.id_tarea_texto} - {tarea.descripcion}</p>
         </div>
       </div>
@@ -1646,7 +1768,7 @@
                 on:click={submitCertificado} 
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Enviando...' : '🚀 Emitir Certificado'}
+                {isSubmitting ? 'Enviando...' : (isEditMode ? '✏️ Editar Certificado' : '🚀 Emitir Certificado')}
               </button>
             </div>
           </div>

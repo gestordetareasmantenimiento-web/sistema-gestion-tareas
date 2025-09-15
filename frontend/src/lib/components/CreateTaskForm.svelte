@@ -23,14 +23,25 @@
     if (provRes.ok) proveedores = (await provRes.json()).data;
     
     // Cargar regiones del usuario
+    console.log('🔄 Cargando regiones del usuario...');
     const regionesRes = await fetch('http://localhost:3000/api/user/regions', { headers });
+    console.log('📡 Response status:', regionesRes.status);
+    
     if (regionesRes.ok) {
-      regionesUsuario = (await regionesRes.json()).data;
+      const regionesData = await regionesRes.json();
+      console.log('📋 Datos de regiones recibidos:', regionesData);
+      regionesUsuario = regionesData.data || [];
+      console.log('🏢 Regiones del usuario:', regionesUsuario);
       
       // Si el usuario tiene solo una región, seleccionarla automáticamente
       if (regionesUsuario.length === 1) {
         id_region = regionesUsuario[0].id;
+        console.log('✅ Región única seleccionada:', id_region);
       }
+    } else {
+      console.error('❌ Error cargando regiones:', regionesRes.status, regionesRes.statusText);
+      const errorData = await regionesRes.json().catch(() => ({}));
+      console.error('❌ Error details:', errorData);
     }
     
     // Cargar inspectores subordinados si es supervisor

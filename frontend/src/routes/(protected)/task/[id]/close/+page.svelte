@@ -120,25 +120,25 @@
       
       switch (userRole) {
         case 'proveedor':
-          dashboardPath = '/proveedor';
+          dashboardPath = '/proveedor/dashboard';
           break;
         case 'inspector':
-          dashboardPath = '/inspector';
+          dashboardPath = '/dashboard';
           break;
         case 'supervisor_mantenimiento':
-          dashboardPath = '/supervisor';
+          dashboardPath = '/supervisor/dashboard';
           break;
         case 'supervisor_obra':
-          dashboardPath = '/supervisor';
+          dashboardPath = '/supervisor/dashboard';
           break;
         case 'administrativo':
-          dashboardPath = '/admin';
+          dashboardPath = '/admin/dashboard';
           break;
         case 'gerente':
-          dashboardPath = '/gerente';
+          dashboardPath = '/gerente/dashboard';
           break;
         case 'cerco':
-          dashboardPath = '/cerco';
+          dashboardPath = '/cerco/dashboard';
           break;
         default:
           dashboardPath = '/dashboard';
@@ -146,6 +146,12 @@
       
       console.log(`Redirigiendo a dashboard para rol ${userRole}: ${dashboardPath}`);
       goto(dashboardPath);
+      
+      // Recargar la página después de un breve delay para asegurar que la navegación se complete
+      setTimeout(() => {
+        console.log('🔄 Recargando página para actualizar datos...');
+        window.location.reload();
+      }, 500);
     }, 2000);
   }
   

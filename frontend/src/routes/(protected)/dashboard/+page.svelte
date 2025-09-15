@@ -16,12 +16,23 @@
 
   $: userRol = $user?.rol.toLowerCase();
   
-  // Combinar todas las tareas de todas las columnas
-  $: todasLasTareas = [
+  // Usar la columna "todas" si existe, sino combinar todas las columnas
+  $: todasLasTareas = data.columnas?.todas || [
     ...(data.columnas?.pendientes || []),
     ...(data.columnas?.pendientesDeCertificacion || []),
     ...(data.columnas?.aprobados || []),
-    ...(data.columnas?.observados || [])
+    ...(data.columnas?.observados || []),
+    ...(data.columnas?.finalizadas || []),
+    ...(data.columnas?.canceladas || []),
+    ...(data.columnas?.pendientesDeProveedor || []),
+    ...(data.columnas?.pendientesDeAprobacion || []),
+    ...(data.columnas?.enCircuito || []),
+    ...(data.columnas?.pendientesDeWo || []),
+    ...(data.columnas?.tareasGeneradas || []),
+    ...(data.columnas?.aprobadasPorAdmin || []),
+    ...(data.columnas?.pendientesDeAutorizacion || []),
+    ...(data.columnas?.pendientesDeRevisionFinal || []),
+    ...(data.columnas?.pasadasAPago || [])
   ];
   
   // Manejar acciones de la tabla
