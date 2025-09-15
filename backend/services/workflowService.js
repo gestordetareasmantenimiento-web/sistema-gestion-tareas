@@ -20,8 +20,46 @@ const cambiarEstadoTarea = (res, id_tarea, id_usuario, nuevoEstado, accionHistor
 
 // --- Exportamos todas las funciones del ciclo de vida ---
 
-exports.aprobarInspector = (req, res) => {
-  cambiarEstadoTarea(res, req.params.id, req.user.id, 'Pendiente Aprobación Supervisor', 'Aprobado por Inspector', `La tarea pasa a estado: Pendiente Aprobación Supervisor.`);
+exports.aprobarInspector = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id: id_usuario, rol } = req.user;
+    
+    // Verificar si hay códigos de mano de obra que requieren aprobación supervisor
+    const codigosRequeridos = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT DISTINCT mo.requiere_aprobacion_supervisor
+        FROM tarea_mano_de_obra tmo
+        JOIN mano_de_obra mo ON tmo.id_mano_de_obra = mo.id
+        WHERE tmo.id_tarea = ?
+      `;
+      db.all(sql, [id], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    // Verificar si algún código requiere aprobación supervisor
+    const requiereAprobacionSupervisor = codigosRequeridos.some(codigo => codigo.requiere_aprobacion_supervisor === 1);
+    
+    let nuevoEstado, mensaje;
+    
+    if (requiereAprobacionSupervisor) {
+      // Si hay códigos que requieren aprobación supervisor, ir a supervisor
+      nuevoEstado = 'Pendiente Aprobación Supervisor';
+      mensaje = 'La tarea pasa a estado: Pendiente Aprobación Supervisor (códigos requieren aprobación supervisor).';
+    } else {
+      // Si no hay códigos que requieran aprobación supervisor, ir directo a administración
+      nuevoEstado = 'Pendiente Aprobación Administración';
+      mensaje = 'La tarea pasa a estado: Pendiente Aprobación Administración (no requiere aprobación supervisor).';
+    }
+    
+    cambiarEstadoTarea(res, id, id_usuario, nuevoEstado, 'Aprobado por Inspector', mensaje);
+    
+  } catch (error) {
+    console.error('Error al aprobar inspector:', error);
+    res.status(500).json({ error: 'Error al procesar la aprobación del inspector' });
+  }
 };
 exports.observarInspector = async (req, res) => {
   try {
@@ -30,7 +68,7 @@ exports.observarInspector = async (req, res) => {
     const { id: id_usuario, rol } = req.user;
     
     const resultado = await observacionService.crearObservacion(
-      id, id_usuario, rol, observacion, 'Pendiente Certificación Inspector'
+      id, id_usuario, rol, observacion, 'Pendiente Certificación Inspector/Supervisor'
     );
     
     res.json({ message: resultado.mensaje, data: resultado });
@@ -56,11 +94,53 @@ exports.finalizarObservacion = async (req, res) => {
     res.status(500).json({ error: 'Error al finalizar la observación' });
   }
 };
-exports.aprobarSupervisor = (req, res) => {
-  cambiarEstadoTarea(res, req.params.id, req.user.id, 'Pendiente Aprobación Administración', 'Aprobado por Supervisor', `La tarea pasa a estado: Pendiente Aprobación Administración.`);
+exports.aprobarSupervisor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id: id_usuario, rol } = req.user;
+    
+    // Verificar si hay códigos de mano de obra que requieren aprobación supervisor
+    const codigosRequeridos = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT DISTINCT mo.requiere_aprobacion_supervisor
+        FROM tarea_mano_de_obra tmo
+        JOIN mano_de_obra mo ON tmo.id_mano_de_obra = mo.id
+        WHERE tmo.id_tarea = ?
+      `;
+      db.all(sql, [id], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    // Verificar si algún código requiere aprobación supervisor
+    const requiereAprobacionSupervisor = codigosRequeridos.some(codigo => codigo.requiere_aprobacion_supervisor === 1);
+    
+    let nuevoEstado, mensaje;
+    
+    if (rol.toLowerCase() === 'supervisor de mantenimiento') {
+      // Supervisor de mantenimiento siempre va a administración
+      nuevoEstado = 'Pendiente Aprobación Administración';
+      mensaje = 'La tarea pasa a estado: Pendiente Aprobación Administración (aprobado por Supervisor de Mantenimiento).';
+    } else if (requiereAprobacionSupervisor) {
+      // Si hay códigos que requieren aprobación supervisor, ir a supervisor de mantenimiento
+      nuevoEstado = 'Pendiente Aprobación Supervisor';
+      mensaje = 'La tarea pasa a estado: Pendiente Aprobación Supervisor (códigos requieren aprobación supervisor).';
+    } else {
+      // Si no hay códigos que requieran aprobación supervisor, ir directo a administración
+      nuevoEstado = 'Pendiente Aprobación Administración';
+      mensaje = 'La tarea pasa a estado: Pendiente Aprobación Administración (no requiere aprobación supervisor).';
+    }
+    
+    cambiarEstadoTarea(res, id, id_usuario, nuevoEstado, 'Aprobado por Supervisor', mensaje);
+    
+  } catch (error) {
+    console.error('Error al aprobar supervisor:', error);
+    res.status(500).json({ error: 'Error al procesar la aprobación del supervisor' });
+  }
 };
 exports.rechazarSupervisor = (req, res) => {
-  cambiarEstadoTarea(res, req.params.id, req.user.id, 'Pendiente Certificación Inspector', 'Observado por Supervisor', `La tarea vuelve al inspector. Observación: ${req.body.observacion}`);
+  cambiarEstadoTarea(res, req.params.id, req.user.id, 'Pendiente Certificación Inspector/Supervisor', 'Observado por Supervisor', `La tarea vuelve al inspector. Observación: ${req.body.observacion}`);
 };
 exports.aprobarAdmin = (req, res) => {
   const nuevo_estado = 'Pendiente Aprobación Gerente';

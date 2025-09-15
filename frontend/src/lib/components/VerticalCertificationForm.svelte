@@ -1054,10 +1054,10 @@
       formData.append('observaciones', observaciones);
       // Preparar datos de mano de obra
       const manoDeObraData = codigosManoDeObraSeleccionados.map(codigo => {
-        const identifier = codigo.id || codigo.codigo;
+        const identifier = codigo.codigo; // Usar siempre el código como identificador
         const cantidad = cantidadesManoDeObra[identifier];
         return {
-          id: codigo.id,
+          id: codigo.codigo, // Usar el código como ID para consistencia
           codigo: codigo.codigo,
           descripcion: codigo.descripcion,
           unidad_medida: codigo.unidad_medida,
@@ -1138,7 +1138,8 @@
           console.error('❌ Error al parsear JSON de respuesta:', jsonError);
           const responseText = await response.text();
           console.log('📄 Respuesta como texto:', responseText);
-          throw new Error(`Error al procesar respuesta del servidor: ${jsonError.message}`);
+          const errorMessage = jsonError instanceof Error ? jsonError.message : 'Error desconocido';
+          throw new Error(`Error al procesar respuesta del servidor: ${errorMessage}`);
         }
       } else {
         const errorText = await response.text();

@@ -74,9 +74,30 @@
         estadoTarea === 'pendiente aprobación supervisor') return true;
     
     // Inspector puede aprobar tareas pendientes de certificación inspector
-    if (rol === 'inspector' && estadoTarea === 'pendiente certificación inspector') return true;
+    if (rol === 'inspector' && (estadoTarea === 'pendiente certificación inspector' || estadoTarea === 'pendiente certificación inspector/supervisor')) return true;
     
     return false;
+  })();
+  
+  // Determinar si el usuario puede editar certificado (inspectores y supervisores en tareas certificadas)
+  $: puedeEditarCertificado = (() => {
+    if (!userRole || !tarea) return false;
+    
+    const rol = userRole.toLowerCase();
+    
+    // Solo inspectores y supervisores pueden editar certificados
+    const rolesPermitidos = [
+      'inspector', 
+      'supervisor de mantenimiento', 
+      'supervisor de disponibilidad', 
+      'supervisor de soporte', 
+      'supervisor de provision'
+    ];
+    
+    if (!rolesPermitidos.includes(rol)) return false;
+    
+    // Solo en tareas que ya están certificadas (tienen certificado emitido)
+    return esPendienteCertificacion;
   })();
   
   // Determinar el siguiente estado al aprobar
@@ -190,6 +211,12 @@
     showReassignForm = false;
   }
   
+  function handleEditarCertificado() {
+    dispatch('editarCertificado', {
+      tareaId: tarea.id
+    });
+  }
+  
   function cancelarFormulario() {
     observacion = '';
     correccion = '';
@@ -250,7 +277,7 @@
       </div>
     </div>
     
-  {:else if puedeAprobar || puedeObservar || puedeReasignar}
+  {:else if puedeAprobar || puedeObservar || puedeReasignar || puedeEditarCertificado}
     <!-- Panel de Acción Principal -->
     <div class="accion-principal">
       <div class="accion-header">
@@ -280,6 +307,16 @@
             disabled={isLoading}
           >
             🚨 Observar
+          </button>
+        {/if}
+        
+        {#if puedeEditarCertificado}
+          <button 
+            class="btn btn-info btn-large" 
+            on:click={handleEditarCertificado}
+            disabled={isLoading}
+          >
+            ✏️ Editar Certificado
           </button>
         {/if}
         
@@ -672,6 +709,17 @@
   .btn-secondary:hover:not(:disabled) {
     background: #5a6268;
     transform: translateY(-2px);
+  }
+  
+  .btn-info {
+    background: #17a2b8;
+    color: white;
+  }
+  
+  .btn-info:hover:not(:disabled) {
+    background: #138496;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
   }
   
   /* Responsive */

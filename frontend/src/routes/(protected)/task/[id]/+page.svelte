@@ -404,6 +404,12 @@
     }
   }
   
+  // Manejar edición de certificado
+  function handleEditarCertificado(event: CustomEvent) {
+    const { tareaId } = event.detail;
+    showEditCertificateModal = true;
+  }
+  
   // --- LÓGICA DE EXPORTACIÓN A XLSX ---
   async function handleExportarMateriales() {
     const confirmed = await showConfirm('Confirmar Exportación', 'Esto registrará la exportación en el historial. ¿Deseas continuar?');
@@ -604,7 +610,7 @@
         {#if userRol === 'inspector' && certificado.tarea.estado.toLowerCase() === 'asignada'}
             <button class="delete-button" on:click={handleDelete}>Cancelar Tarea</button>
         {/if}
-        {#if userRol === 'proveedor' && certificado.tarea.estado === 'Asignada' && certificado.tarea.numero_wo}
+        {#if userRol === 'proveedor' && (certificado.tarea.estado === 'Asignada' || certificado.tarea.estado === 'Pendiente Certificación Inspector' || certificado.tarea.estado === 'Pendiente Certificación Inspector/Supervisor') && certificado.tarea.numero_wo}
           <a href="/task/{certificado.tarea.id}/close" class="close-task-button">📋 Certificar</a>
         {/if}
       </div>
@@ -678,7 +684,7 @@
         {/if}
         
         <!-- Sección de subida de nuevos archivos (solo para proveedores en certificación) -->
-        {#if userRol === 'proveedor' && certificado.tarea.estado === 'Pendiente Certificación Inspector'}
+        {#if userRol === 'proveedor' && (certificado.tarea.estado === 'Pendiente Certificación Inspector' || certificado.tarea.estado === 'Pendiente Certificación Inspector/Supervisor')}
           <div class="upload-section">
             <h4>📤 Subir nuevos archivos</h4>
           
@@ -951,7 +957,7 @@
 
     <!-- SECCIÓN DE OBSERVACIÓN DEL INSPECTOR -->
     <!-- ================================================================= -->
-    {#if userRol === 'proveedor' && certificado.tarea.estado.toLowerCase().includes('observada')}
+    {#if userRol === 'proveedor' && (certificado.tarea.estado.toLowerCase().includes('observada') || certificado.tarea.estado === 'Pendiente Certificación Inspector' || certificado.tarea.estado === 'Pendiente Certificación Inspector/Supervisor')}
       <div class="observacion-inspector-panel">
         <div class="observacion-header">
           <h3>⚠️ Observación del Inspector</h3>
@@ -980,7 +986,7 @@
 
     <!-- SECCIÓN DE EDICIÓN DE CERTIFICADO -->
     <!-- ================================================================= -->
-    {#if userRol === 'proveedor' && certificado.tarea.estado.toLowerCase().includes('observada')}
+    {#if userRol === 'proveedor' && (certificado.tarea.estado.toLowerCase().includes('observada') || certificado.tarea.estado === 'Pendiente Certificación Inspector' || certificado.tarea.estado === 'Pendiente Certificación Inspector/Supervisor')}
       <div class="editar-certificado-panel">
         <div class="editar-header">
           <h3>✏️ Editar Certificado</h3>
@@ -1015,6 +1021,7 @@
           on:pasarObservacion={handlePasarObservacion}
           on:finalizarObservacion={handleFinalizarObservacion}
           on:reasignar={handleReassignProvider}
+          on:editarCertificado={handleEditarCertificado}
         />
       {/if}
       <!-- Panel del Administrativo (Gestión de WO) -->
@@ -1054,10 +1061,14 @@
           materiales={[]}
           isEditMode={true}
           certificadoData={certificado}
-          on:certificadoEmitido={() => {
+          on:certificadoEmitido={async () => {
             showEditCertificateModal = false;
-            // Recargar la página para mostrar los cambios
-            window.location.reload();
+            // Invalidar cache y recargar datos
+            await invalidateAll();
+            // Forzar recarga de la página para asegurar que se muestren los cambios
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
           }}
         />
       </div>

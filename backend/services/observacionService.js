@@ -13,8 +13,8 @@ function getEstadoAnteriorInteligente(estadoActual) {
     'Pendiente Aprobación CERCO': 'Pendiente Aprobación Gerente',
     'Pendiente Aprobación Gerente': 'Pendiente Aprobación Administración', 
     'Pendiente Aprobación Administración': 'Pendiente Aprobación Supervisor',
-    'Pendiente Aprobación Supervisor': 'Pendiente Certificación Inspector',
-    'Pendiente Certificación Inspector': 'Asignada'
+    'Pendiente Aprobación Supervisor': 'Pendiente Certificación Inspector/Supervisor',
+    'Pendiente Certificación Inspector/Supervisor': 'Asignada'
   };
 
   const estadoAnterior = flujoNormal[estadoActual];
@@ -25,7 +25,7 @@ function getEstadoAnteriorInteligente(estadoActual) {
   }
   
   if (estadoAnterior === 'Pendiente Aprobación Supervisor') {
-    return 'Pendiente Certificación Inspector';
+    return 'Pendiente Certificación Inspector/Supervisor';
   }
   
   return estadoAnterior;

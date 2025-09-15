@@ -37,7 +37,7 @@ module.exports = function(upload) {
   
   // --- Rutas de Flujo de Trabajo (Ciclo de Vida Completo) ---
   router.post('/:id/emitir-certificado', upload.array('archivos', 10), checkRole([ROLES.PROVEEDOR]), tareaController.emitirCertificado);
-  router.put('/:id/editar-certificado', upload.array('archivos', 10), checkRole([ROLES.PROVEEDOR]), tareaController.editarCertificado);
+  router.put('/:id/editar-certificado', upload.array('archivos', 10), checkRole([ROLES.PROVEEDOR, ROLES.INSPECTOR, ...SUPERVISOR_ROLES]), tareaController.editarCertificado);
   
   router.put('/:id/aprobar-inspector', checkRole([ROLES.INSPECTOR]), tareaController.aprobarInspector);
   router.put('/:id/observar-inspector', checkRole([ROLES.INSPECTOR]), tareaController.observarInspector);

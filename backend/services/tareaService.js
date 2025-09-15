@@ -53,7 +53,7 @@ const getAllTareas = async (req, res) => {
         grouping: (tareas) => ({
           todas: tareas, // Mostrar todas las tareas del proveedor
           pendientes: tareas.filter(t => t.estado === 'Asignada'),
-          certificadas: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector'),
+          certificadas: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector' || t.estado === 'Pendiente Certificación Inspector/Supervisor'),
           enAprobacion: tareas.filter(t => [
             'Pendiente Aprobación Supervisor',
             'Pendiente Aprobación Administración', 
@@ -71,7 +71,7 @@ const getAllTareas = async (req, res) => {
         grouping: (tareas) => ({
           todas: tareas, // Mostrar todas las tareas creadas por el inspector
           pendientes: tareas.filter(t => t.estado === 'Asignada'),
-          pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector'),
+          pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector' || t.estado === 'Pendiente Certificación Inspector/Supervisor'),
           aprobados: tareas.filter(t => ['Pendiente Aprobación Supervisor', 'Pendiente Aprobación Administración', 'Pendiente Aprobación Gerente', 'Pendiente Aprobación CERCO'].includes(t.estado)),
           observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
@@ -84,9 +84,9 @@ const getAllTareas = async (req, res) => {
         grouping: (tareas) => ({
           todas: tareas, // Mostrar todas las tareas del supervisor y sus inspectores
           pendientesDeProveedor: tareas.filter(t => t.estado === 'Asignada'),
-          pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector'),
+          pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector' || t.estado === 'Pendiente Certificación Inspector/Supervisor'),
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Supervisor'),
-          enCircuito: tareas.filter(t => !['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Aprobación Supervisor'].includes(t.estado)),
+          enCircuito: tareas.filter(t => !['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Certificación Inspector/Supervisor', 'Pendiente Aprobación Supervisor'].includes(t.estado)),
           observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
           canceladas: tareas.filter(t => t.estado === 'Cancelada')
@@ -99,7 +99,7 @@ const getAllTareas = async (req, res) => {
           todas: tareas, // Mostrar todas las tareas de la región
           pendientesDeWo: tareas.filter(t => !t.numero_wo && t.estado === 'Asignada'),
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Administración'),
-          tareasGeneradas: tareas.filter(t => t.numero_wo && ['Asignada', 'Pendiente Certificación Inspector'].includes(t.estado)),
+          tareasGeneradas: tareas.filter(t => t.numero_wo && ['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Certificación Inspector/Supervisor'].includes(t.estado)),
           aprobadasPorAdmin: tareas.filter(t => ['Pendiente Aprobación Gerente', 'Pendiente Aprobación CERCO', 'Finalizada - Aprobada'].includes(t.estado)),
           observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
@@ -141,9 +141,9 @@ const getAllTareas = async (req, res) => {
         grouping: (tareas) => ({ 
           todas: tareas, // Mostrar todas las tareas de la región
           pendientes: tareas.filter(t => t.estado === 'Asignada'),
-          pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector'),
+          pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector' || t.estado === 'Pendiente Certificación Inspector/Supervisor'),
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Supervisor'),
-          enCircuito: tareas.filter(t => !['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Aprobación Supervisor'].includes(t.estado)),
+          enCircuito: tareas.filter(t => !['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Certificación Inspector/Supervisor', 'Pendiente Aprobación Supervisor'].includes(t.estado)),
           observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
           canceladas: tareas.filter(t => t.estado === 'Cancelada')
@@ -479,7 +479,7 @@ const emitirCertificado = async (req, res) => {
     // Actualizar la tarea con las fechas y cambiar estado
     await new Promise((resolve, reject) => {
       const sql = `UPDATE tareas SET fecha_inicio = ?, fecha_fin = ?, estado = ? WHERE id = ?`;
-      db.run(sql, [fecha_inicio, fecha_fin, 'Pendiente Certificación Inspector', id], function(err) {
+      db.run(sql, [fecha_inicio, fecha_fin, 'Pendiente Certificación Inspector/Supervisor', id], function(err) {
         if (err) reject(err);
         else resolve(this.changes);
       });
@@ -506,11 +506,25 @@ const emitirCertificado = async (req, res) => {
     // Guardar mano de obra procesada
     if (manoDeObraProcesada && manoDeObraProcesada.length > 0) {
       for (const item of manoDeObraProcesada) {
+        // Obtener el ID real de la mano de obra basado en el código
+        const manoDeObraReal = await new Promise((resolve, reject) => {
+          const sql = `SELECT id FROM mano_de_obra WHERE codigo = ?`;
+          db.get(sql, [item.codigo], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        });
+        
+        if (!manoDeObraReal) {
+          console.error(`❌ No se encontró mano de obra con código: ${item.codigo}`);
+          continue;
+        }
+        
         await new Promise((resolve, reject) => {
           // Para el costo mínimo diario, usar el precio calculado en lugar del precio original
           const precioFinal = item.precioCalculado !== undefined ? item.precioCalculado : item.precio;
           const sql = `INSERT INTO tarea_mano_de_obra (id_tarea, id_mano_de_obra, cantidad, precio_calculado) VALUES (?, ?, ?, ?)`;
-          db.run(sql, [id, item.id, item.cantidad, precioFinal], function(err) {
+          db.run(sql, [id, manoDeObraReal.id, item.cantidad, precioFinal], function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
           });
@@ -723,7 +737,8 @@ const editarCertificado = async (req, res) => {
     
     // Permitir editar si la tarea está observada o si está pendiente de certificación (después de corrección)
     const estadoPermitido = tarea.estado.toLowerCase().includes('observada') || 
-                           tarea.estado === 'Pendiente Certificación Inspector';
+                           tarea.estado === 'Pendiente Certificación Inspector' ||
+                           tarea.estado === 'Pendiente Certificación Inspector/Supervisor';
     
     if (!estadoPermitido) {
       return res.status(400).json({ error: 'Solo se pueden editar certificados de tareas observadas o pendientes de certificación.' });
@@ -742,10 +757,10 @@ const editarCertificado = async (req, res) => {
       return res.status(400).json({ error: 'Las fechas de inicio y fin son obligatorias.' });
     }
     
-    // Actualizar la tarea con las fechas y cambiar estado a "Pendiente Certificación Inspector"
+    // Actualizar la tarea con las fechas y cambiar estado a "Pendiente Certificación Inspector/Supervisor"
     await new Promise((resolve, reject) => {
       const sql = `UPDATE tareas SET fecha_inicio = ?, fecha_fin = ?, estado = ? WHERE id = ?`;
-      db.run(sql, [fecha_inicio, fecha_fin, 'Pendiente Certificación Inspector', id], function(err) {
+      db.run(sql, [fecha_inicio, fecha_fin, 'Pendiente Certificación Inspector/Supervisor', id], function(err) {
         if (err) reject(err);
         else resolve(this.changes);
       });
@@ -768,18 +783,34 @@ const editarCertificado = async (req, res) => {
       });
     });
     
+    // Eliminar archivos adjuntos anteriores
+    await new Promise((resolve, reject) => {
+      const sql = `DELETE FROM tarea_adjuntos WHERE id_tarea = ?`;
+      db.run(sql, [id], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      });
+    });
+    
     // Procesar mano de obra con cálculo automático del costo mínimo diario
     let manoDeObraProcesada = mano_de_obra || [];
     if (manoDeObraProcesada.length > 0) {
       try {
-        const resultadoCostoMinimo = await costoMinimoService.procesarManoDeObraConCostoMinimo(manoDeObraProcesada);
-        manoDeObraProcesada = resultadoCostoMinimo.manoDeObraProcesada;
-        console.log('Costo mínimo diario:', resultadoCostoMinimo.mensaje);
+        // Solo procesar costo mínimo diario si hay códigos que lo requieran
+        const tieneCostoMinimo = manoDeObraProcesada.some(item => item.codigo === '5020982');
+        if (tieneCostoMinimo) {
+          const resultadoCostoMinimo = await costoMinimoService.procesarManoDeObraConCostoMinimo(manoDeObraProcesada);
+          manoDeObraProcesada = resultadoCostoMinimo.manoDeObraProcesada;
+          console.log('Costo mínimo diario:', resultadoCostoMinimo.mensaje);
+        }
         
-        // Procesar cuadrilla modelo después del costo mínimo diario
-        const resultadoCuadrillaModelo = await cuadrillaModeloService.procesarManoDeObraConCuadrillaModelo(manoDeObraProcesada);
-        manoDeObraProcesada = resultadoCuadrillaModelo.manoDeObraProcesada;
-        console.log('Cuadrilla modelo:', resultadoCuadrillaModelo.mensaje);
+        // Solo procesar cuadrilla modelo si hay códigos que lo requieran
+        const tieneCuadrillaModelo = manoDeObraProcesada.some(item => item.codigo === '5033311');
+        if (tieneCuadrillaModelo) {
+          const resultadoCuadrillaModelo = await cuadrillaModeloService.procesarManoDeObraConCuadrillaModelo(manoDeObraProcesada);
+          manoDeObraProcesada = resultadoCuadrillaModelo.manoDeObraProcesada;
+          console.log('Cuadrilla modelo:', resultadoCuadrillaModelo.mensaje);
+        }
       } catch (error) {
         console.error('Error procesando cálculos automáticos:', error);
         return res.status(400).json({ error: error.message });
@@ -789,11 +820,26 @@ const editarCertificado = async (req, res) => {
     // Guardar mano de obra procesada
     if (manoDeObraProcesada && manoDeObraProcesada.length > 0) {
       for (const item of manoDeObraProcesada) {
+        // Obtener el ID real de la mano de obra basado en el código
+        const manoDeObraReal = await new Promise((resolve, reject) => {
+          const sql = `SELECT id FROM mano_de_obra WHERE codigo = ?`;
+          db.get(sql, [item.codigo], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        });
+        
+        if (!manoDeObraReal) {
+          console.error(`❌ No se encontró mano de obra con código: ${item.codigo}`);
+          continue;
+        }
+        
+        
         await new Promise((resolve, reject) => {
           // Para el costo mínimo diario, usar el precio calculado en lugar del precio original
           const precioFinal = item.precioCalculado !== undefined ? item.precioCalculado : item.precio;
           const sql = `INSERT INTO tarea_mano_de_obra (id_tarea, id_mano_de_obra, cantidad, precio_calculado) VALUES (?, ?, ?, ?)`;
-          db.run(sql, [id, item.id, item.cantidad, precioFinal], function(err) {
+          db.run(sql, [id, manoDeObraReal.id, item.cantidad, precioFinal], function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
           });
@@ -827,7 +873,7 @@ const editarCertificado = async (req, res) => {
       }
     }
     
-    // Procesar archivos adjuntos si existen (agregar a los existentes)
+    // Procesar archivos adjuntos si existen (se agregaron nuevos archivos)
     if (req.files && req.files.length > 0) {
       for (const archivo of req.files) {
         await new Promise((resolve, reject) => {
@@ -843,7 +889,7 @@ const editarCertificado = async (req, res) => {
     // Registrar en el historial
     console.log('📝 Registrando en historial...');
     try {
-      await historialService.registrar(id, id_usuario, 'Certificado Editado', `Certificado editado y corregido. Tarea vuelve a estado: Pendiente Certificación Inspector.`);
+      await historialService.registrar(id, id_usuario, 'Certificado Editado', `Certificado editado y corregido. Tarea vuelve a estado: Pendiente Certificación Inspector/Supervisor.`);
       console.log('✅ Historial registrado exitosamente');
     } catch (historialError) {
       console.error('❌ Error al registrar en historial:', historialError);
@@ -852,9 +898,9 @@ const editarCertificado = async (req, res) => {
     
     console.log('📤 Enviando respuesta exitosa...');
     res.json({ 
-      message: 'Certificado editado exitosamente. La tarea vuelve a estado: Pendiente Certificación Inspector.',
+      message: 'Certificado editado exitosamente. La tarea vuelve a estado: Pendiente Certificación Inspector/Supervisor.',
       data: { 
-        estado: 'Pendiente Certificación Inspector',
+        estado: 'Pendiente Certificación Inspector/Supervisor',
         fecha_inicio,
         fecha_fin
       }
