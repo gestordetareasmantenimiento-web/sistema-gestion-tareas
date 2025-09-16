@@ -607,9 +607,6 @@
         {#if userRol === 'inspector' && certificado.tarea.estado.toLowerCase() === 'asignada'}
             <button class="delete-button" on:click={handleDelete}>Cancelar Tarea</button>
         {/if}
-        {#if userRol === 'proveedor' && (certificado.tarea.estado === 'Asignada' || certificado.tarea.estado === 'Pendiente Certificación Inspector' || certificado.tarea.estado === 'Pendiente Certificación Inspector/Supervisor') && certificado.tarea.numero_wo}
-          <a href="/task/{certificado.tarea.id}/close" class="close-task-button">📋 Certificar</a>
-        {/if}
       </div>
     </div>
     
@@ -954,7 +951,7 @@
 
     <!-- SECCIÓN DE OBSERVACIÓN DEL INSPECTOR -->
     <!-- ================================================================= -->
-    {#if userRol === 'proveedor' && (certificado.tarea.estado.toLowerCase().includes('observada') || certificado.tarea.estado === 'Pendiente Certificación Inspector' || certificado.tarea.estado === 'Pendiente Certificación Inspector/Supervisor')}
+    {#if userRol === 'proveedor' && certificado.tarea.estado.toLowerCase().includes('observada')}
       <div class="observacion-inspector-panel">
         <div class="observacion-header">
           <h3>⚠️ Observación del Inspector</h3>
@@ -983,7 +980,7 @@
 
     <!-- SECCIÓN DE EDICIÓN DE CERTIFICADO -->
     <!-- ================================================================= -->
-    {#if userRol === 'proveedor' && (certificado.tarea.estado.toLowerCase().includes('observada') || certificado.tarea.estado === 'Pendiente Certificación Inspector' || certificado.tarea.estado === 'Pendiente Certificación Inspector/Supervisor')}
+    {#if userRol === 'proveedor' && certificado.tarea.estado.toLowerCase().includes('observada')}
       <div class="editar-certificado-panel">
         <div class="editar-header">
           <h3>✏️ Editar Certificado</h3>

@@ -100,6 +100,19 @@
     return esPendienteCertificacion;
   })();
   
+  // Determinar si el usuario puede certificar (proveedores en tareas asignadas con WO)
+  $: puedeCertificar = (() => {
+    if (!userRole || !tarea) return false;
+    
+    const rol = userRole.toLowerCase();
+    
+    // Solo proveedores pueden certificar
+    if (rol !== 'proveedor') return false;
+    
+    // Solo en tareas asignadas con número de WO
+    return esAsignada && tarea.numero_wo;
+  })();
+  
   // Determinar el siguiente estado al aprobar
   $: siguienteEstado = (() => {
     if (!userRole) return '';
@@ -217,6 +230,11 @@
     });
   }
   
+  function handleCertificar() {
+    // Navegar a la página de certificación
+    window.location.href = `/task/${tarea.id}/close`;
+  }
+  
   function cancelarFormulario() {
     observacion = '';
     correccion = '';
@@ -327,6 +345,16 @@
             disabled={isLoading}
           >
             🔄 Reasignar Proveedor
+          </button>
+        {/if}
+        
+        {#if puedeCertificar}
+          <button 
+            class="btn btn-purple btn-large" 
+            on:click={handleCertificar}
+            disabled={isLoading}
+          >
+            📋 Certificar
           </button>
         {/if}
       </div>
@@ -720,6 +748,17 @@
     background: #138496;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+  }
+  
+  .btn-purple {
+    background: #6f42c1;
+    color: white;
+  }
+  
+  .btn-purple:hover:not(:disabled) {
+    background: #5a32a3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(111, 66, 193, 0.3);
   }
   
   /* Responsive */
