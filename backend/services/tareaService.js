@@ -485,18 +485,29 @@ const emitirCertificado = async (req, res) => {
       });
     });
     
-    // Procesar mano de obra con cálculo automático del costo mínimo diario
+    // Procesar mano de obra - solo aplicar cálculos automáticos si los códigos fueron seleccionados
     let manoDeObraProcesada = mano_de_obra || [];
     if (manoDeObraProcesada.length > 0) {
       try {
-        const resultadoCostoMinimo = await costoMinimoService.procesarManoDeObraConCostoMinimo(manoDeObraProcesada);
-        manoDeObraProcesada = resultadoCostoMinimo.manoDeObraProcesada;
-        console.log('Costo mínimo diario:', resultadoCostoMinimo.mensaje);
+        // Verificar si el usuario seleccionó explícitamente el costo mínimo diario
+        const tieneCostoMinimo = manoDeObraProcesada.some(item => item.codigo === '5020982');
         
-        // Procesar cuadrilla modelo después del costo mínimo diario
-        const resultadoCuadrillaModelo = await cuadrillaModeloService.procesarManoDeObraConCuadrillaModelo(manoDeObraProcesada);
-        manoDeObraProcesada = resultadoCuadrillaModelo.manoDeObraProcesada;
-        console.log('Cuadrilla modelo:', resultadoCuadrillaModelo.mensaje);
+        if (tieneCostoMinimo) {
+          // Solo procesar si fue seleccionado explícitamente
+          const resultadoCostoMinimo = await costoMinimoService.procesarManoDeObraConCostoMinimo(manoDeObraProcesada);
+          manoDeObraProcesada = resultadoCostoMinimo.manoDeObraProcesada;
+          console.log('Costo mínimo diario procesado:', resultadoCostoMinimo.mensaje);
+        }
+        
+        // Verificar si el usuario seleccionó explícitamente la cuadrilla modelo
+        const tieneCuadrillaModelo = manoDeObraProcesada.some(item => item.codigo === '5033311');
+        
+        if (tieneCuadrillaModelo) {
+          // Solo procesar si fue seleccionado explícitamente
+          const resultadoCuadrillaModelo = await cuadrillaModeloService.procesarManoDeObraConCuadrillaModelo(manoDeObraProcesada);
+          manoDeObraProcesada = resultadoCuadrillaModelo.manoDeObraProcesada;
+          console.log('Cuadrilla modelo procesada:', resultadoCuadrillaModelo.mensaje);
+        }
       } catch (error) {
         console.error('Error procesando cálculos automáticos:', error);
         return res.status(400).json({ error: error.message });
@@ -724,6 +735,8 @@ const editarCertificado = async (req, res) => {
     const { id } = req.params;
     const id_usuario = req.user.id;
     console.log('📋 Parámetros:', { id, id_usuario });
+    console.log('📋 Body keys:', Object.keys(req.body));
+    console.log('📋 Files:', req.files ? req.files.length : 'No files');
     
     // Verificar que la tarea esté en estado de observación
     const tarea = await new Promise((resolve, reject) => {
@@ -752,45 +765,91 @@ const editarCertificado = async (req, res) => {
     const materiales_utilizados = JSON.parse(req.body.materiales_utilizados || '[]');
     const materiales_recuperados = JSON.parse(req.body.materiales_recuperados || '[]');
     
+    console.log('📋 Datos extraídos:', {
+      fecha_inicio,
+      fecha_fin,
+      observaciones: observaciones ? observaciones.substring(0, 50) + '...' : 'Sin observaciones',
+      mano_de_obra_count: mano_de_obra ? mano_de_obra.length : 0,
+      materiales_utilizados_count: materiales_utilizados ? materiales_utilizados.length : 0,
+      materiales_recuperados_count: materiales_recuperados ? materiales_recuperados.length : 0
+    });
+    
     // Validar datos obligatorios
     if (!fecha_inicio || !fecha_fin) {
       return res.status(400).json({ error: 'Las fechas de inicio y fin son obligatorias.' });
     }
     
-    // Actualizar la tarea con las fechas y cambiar estado a "Pendiente Certificación Inspector/Supervisor"
+    // Obtener el rol del usuario para determinar si debe cambiar el estado
+    const rolUsuario = req.user.rol.toLowerCase();
+    console.log('👤 Rol del usuario:', rolUsuario);
+    
+    // Solo cambiar estado si es proveedor, inspector/supervisor mantiene el estado actual
+    let nuevoEstado = null;
+    if (rolUsuario === 'proveedor') {
+      nuevoEstado = 'Pendiente Certificación Inspector/Supervisor';
+      console.log('🔄 Proveedor editando - cambiando estado a:', nuevoEstado);
+    } else {
+      console.log('🔄 Inspector/Supervisor editando - manteniendo estado actual');
+    }
+    
+    // Actualizar la tarea con las fechas
+    console.log('🔄 Actualizando tarea...');
     await new Promise((resolve, reject) => {
-      const sql = `UPDATE tareas SET fecha_inicio = ?, fecha_fin = ?, estado = ? WHERE id = ?`;
-      db.run(sql, [fecha_inicio, fecha_fin, 'Pendiente Certificación Inspector/Supervisor', id], function(err) {
-        if (err) reject(err);
-        else resolve(this.changes);
+      let sql, params;
+      if (nuevoEstado) {
+        // Proveedor: actualizar fechas y cambiar estado
+        sql = `UPDATE tareas SET fecha_inicio = ?, fecha_fin = ?, estado = ? WHERE id = ?`;
+        params = [fecha_inicio, fecha_fin, nuevoEstado, id];
+      } else {
+        // Inspector/Supervisor: solo actualizar fechas
+        sql = `UPDATE tareas SET fecha_inicio = ?, fecha_fin = ? WHERE id = ?`;
+        params = [fecha_inicio, fecha_fin, id];
+      }
+      
+      db.run(sql, params, function(err) {
+        if (err) {
+          console.error('❌ Error actualizando tarea:', err);
+          reject(err);
+        } else {
+          console.log('✅ Tarea actualizada exitosamente');
+          resolve(this.changes);
+        }
       });
     });
     
-    // Eliminar datos anteriores del certificado
-    await new Promise((resolve, reject) => {
-      const sql = `DELETE FROM tarea_mano_de_obra WHERE id_tarea = ?`;
-      db.run(sql, [id], function(err) {
-        if (err) reject(err);
-        else resolve(this.changes);
-      });
-    });
+    // Solo eliminar y reinsertar datos si hay cambios
+    console.log('🔍 Verificando si hay cambios en mano de obra y materiales...');
     
-    await new Promise((resolve, reject) => {
-      const sql = `DELETE FROM tarea_materiales WHERE id_tarea = ?`;
-      db.run(sql, [id], function(err) {
-        if (err) reject(err);
-        else resolve(this.changes);
+    // Eliminar mano de obra anterior solo si hay nueva mano de obra
+    if (mano_de_obra && mano_de_obra.length > 0) {
+      console.log('🗑️ Eliminando mano de obra anterior...');
+      await new Promise((resolve, reject) => {
+        const sql = `DELETE FROM tarea_mano_de_obra WHERE id_tarea = ?`;
+        db.run(sql, [id], function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        });
       });
-    });
+    } else {
+      console.log('⏭️ No hay mano de obra nueva, manteniendo la anterior');
+    }
     
-    // Eliminar archivos adjuntos anteriores
-    await new Promise((resolve, reject) => {
-      const sql = `DELETE FROM tarea_adjuntos WHERE id_tarea = ?`;
-      db.run(sql, [id], function(err) {
-        if (err) reject(err);
-        else resolve(this.changes);
+    // Eliminar materiales anteriores solo si hay nuevos materiales
+    if ((materiales_utilizados && materiales_utilizados.length > 0) || 
+        (materiales_recuperados && materiales_recuperados.length > 0)) {
+      console.log('🗑️ Eliminando materiales anteriores...');
+      await new Promise((resolve, reject) => {
+        const sql = `DELETE FROM tarea_materiales WHERE id_tarea = ?`;
+        db.run(sql, [id], function(err) {
+          if (err) reject(err);
+          else resolve(this.changes);
+        });
       });
-    });
+    } else {
+      console.log('⏭️ No hay materiales nuevos, manteniendo los anteriores');
+    }
+    
+    // NO eliminar archivos adjuntos anteriores - solo agregar nuevos si existen
     
     // Procesar mano de obra con cálculo automático del costo mínimo diario
     let manoDeObraProcesada = mano_de_obra || [];
@@ -819,6 +878,7 @@ const editarCertificado = async (req, res) => {
     
     // Guardar mano de obra procesada
     if (manoDeObraProcesada && manoDeObraProcesada.length > 0) {
+      console.log(`🔧 Guardando ${manoDeObraProcesada.length} items de mano de obra...`);
       for (const item of manoDeObraProcesada) {
         // Obtener el ID real de la mano de obra basado en el código
         const manoDeObraReal = await new Promise((resolve, reject) => {
@@ -834,7 +894,7 @@ const editarCertificado = async (req, res) => {
           continue;
         }
         
-        
+        console.log(`✅ Guardando mano de obra: ${item.codigo} - ${item.descripcion}`);
         await new Promise((resolve, reject) => {
           // Para el costo mínimo diario, usar el precio calculado en lugar del precio original
           const precioFinal = item.precioCalculado !== undefined ? item.precioCalculado : item.precio;
@@ -845,11 +905,16 @@ const editarCertificado = async (req, res) => {
           });
         });
       }
+      console.log('✅ Mano de obra guardada exitosamente');
+    } else {
+      console.log('🔧 No hay mano de obra para guardar');
     }
     
     // Guardar materiales utilizados
     if (materiales_utilizados && materiales_utilizados.length > 0) {
+      console.log(`📦 Guardando ${materiales_utilizados.length} materiales utilizados...`);
       for (const item of materiales_utilizados) {
+        console.log(`✅ Guardando material utilizado: ${item.codigo || 'Sin código'} - ${item.descripcion || 'Sin descripción'}`);
         await new Promise((resolve, reject) => {
           const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
           db.run(sql, [id, item.id, item.cantidad, 'utilizado'], function(err) {
@@ -858,11 +923,16 @@ const editarCertificado = async (req, res) => {
           });
         });
       }
+      console.log('✅ Materiales utilizados guardados exitosamente');
+    } else {
+      console.log('📦 No hay materiales utilizados para guardar');
     }
     
     // Guardar materiales recuperados
     if (materiales_recuperados && materiales_recuperados.length > 0) {
+      console.log(`📦 Guardando ${materiales_recuperados.length} materiales recuperados...`);
       for (const item of materiales_recuperados) {
+        console.log(`✅ Guardando material recuperado: ${item.codigo || 'Sin código'} - ${item.descripcion || 'Sin descripción'}`);
         await new Promise((resolve, reject) => {
           const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
           db.run(sql, [id, item.id, item.cantidad, 'recuperado'], function(err) {
@@ -871,10 +941,14 @@ const editarCertificado = async (req, res) => {
           });
         });
       }
+      console.log('✅ Materiales recuperados guardados exitosamente');
+    } else {
+      console.log('📦 No hay materiales recuperados para guardar');
     }
     
     // Procesar archivos adjuntos si existen (se agregaron nuevos archivos)
     if (req.files && req.files.length > 0) {
+      console.log(`📎 Procesando ${req.files.length} archivos nuevos...`);
       for (const archivo of req.files) {
         await new Promise((resolve, reject) => {
           const sql = `INSERT INTO tarea_adjuntos (id_tarea, nombre_archivo, url_archivo) VALUES (?, ?, ?)`;
@@ -884,27 +958,52 @@ const editarCertificado = async (req, res) => {
           });
         });
       }
+      console.log('✅ Archivos nuevos agregados exitosamente');
+    } else {
+      console.log('📎 No hay archivos nuevos para agregar');
     }
     
     // Registrar en el historial
     console.log('📝 Registrando en historial...');
     try {
-      await historialService.registrar(id, id_usuario, 'Certificado Editado', `Certificado editado y corregido. Tarea vuelve a estado: Pendiente Certificación Inspector/Supervisor.`);
+      let mensajeHistorial, mensajeRespuesta, estadoRespuesta;
+      
+      if (rolUsuario === 'proveedor') {
+        mensajeHistorial = `Certificado editado por proveedor. Tarea vuelve a estado: Pendiente Certificación Inspector/Supervisor.`;
+        mensajeRespuesta = 'Certificado editado exitosamente. La tarea vuelve a estado: Pendiente Certificación Inspector/Supervisor.';
+        estadoRespuesta = 'Pendiente Certificación Inspector/Supervisor';
+      } else {
+        mensajeHistorial = `Certificado editado por ${rolUsuario}. Estado de la tarea se mantiene.`;
+        mensajeRespuesta = 'Certificado editado exitosamente. Los cambios se han guardado.';
+        estadoRespuesta = tarea.estado; // Mantener el estado actual
+      }
+      
+      await historialService.registrar(id, id_usuario, 'Certificado Editado', mensajeHistorial);
       console.log('✅ Historial registrado exitosamente');
+      
+      console.log('📤 Enviando respuesta exitosa...');
+      res.json({ 
+        message: mensajeRespuesta,
+        data: { 
+          estado: estadoRespuesta,
+          fecha_inicio,
+          fecha_fin
+        }
+      });
     } catch (historialError) {
       console.error('❌ Error al registrar en historial:', historialError);
       // No fallar por error de historial, continuar con la respuesta
+      res.json({ 
+        message: rolUsuario === 'proveedor' ? 
+          'Certificado editado exitosamente. La tarea vuelve a estado: Pendiente Certificación Inspector/Supervisor.' :
+          'Certificado editado exitosamente. Los cambios se han guardado.',
+        data: { 
+          estado: rolUsuario === 'proveedor' ? 'Pendiente Certificación Inspector/Supervisor' : tarea.estado,
+          fecha_inicio,
+          fecha_fin
+        }
+      });
     }
-    
-    console.log('📤 Enviando respuesta exitosa...');
-    res.json({ 
-      message: 'Certificado editado exitosamente. La tarea vuelve a estado: Pendiente Certificación Inspector/Supervisor.',
-      data: { 
-        estado: 'Pendiente Certificación Inspector/Supervisor',
-        fecha_inicio,
-        fecha_fin
-      }
-    });
     
   } catch (error) {
     console.error('Error al editar certificado:', error);
