@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentación MVP - Sistema de Gestión de Tareas</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .presentation {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .slide {
+            min-height: 100vh;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        .slide h1 {
+            font-size: 3.5em;
+            margin: 0 0 30px 0;
+            color: #2c3e50;
+            font-weight: 300;
+        }
+        .slide h2 {
+            font-size: 2.5em;
+            margin: 0 0 30px 0;
+            color: #2c3e50;
+            font-weight: 400;
+        }
+        .slide h3 {
+            font-size: 2em;
+            margin: 0 0 20px 0;
+            color: #34495e;
+        }
+        .slide p {
+            font-size: 1.3em;
+            color: #7f8c8d;
+            max-width: 800px;
+            margin: 0 auto 30px auto;
+        }
+        .hero {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+        }
+        .hero h1 {
+            color: white;
+            font-size: 4em;
+        }
+        .hero p {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.5em;
+        }
+        .problem {
+            background: #e74c3c;
+            color: white;
+        }
+        .problem h2, .problem h3 {
+            color: white;
+        }
+        .problem p {
+            color: rgba(255,255,255,0.9);
+        }
+        .solution {
+            background: #27ae60;
+            color: white;
+        }
+        .solution h2, .solution h3 {
+            color: white;
+        }
+        .solution p {
+            color: rgba(255,255,255,0.9);
+        }
+        .features {
+            background: #f8f9fa;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-top: 5px solid #3498db;
+        }
+        .feature-card .icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+            display: block;
+        }
+        .feature-card h4 {
+            color: #2c3e50;
+            margin: 0 0 15px 0;
+            font-size: 1.5em;
+        }
+        .workflow {
+            background: #ecf0f1;
+        }
+        .workflow-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+        .workflow-step {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin: 10px;
+            min-width: 150px;
+            text-align: center;
+        }
+        .workflow-step .number {
+            background: #3498db;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px auto;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .workflow-arrow {
+            color: #3498db;
+            font-size: 2em;
+            margin: 0 20px;
+        }
+        .benefits {
+            background: #f39c12;
+            color: white;
+        }
+        .benefits h2, .benefits h3 {
+            color: white;
+        }
+        .benefits p {
+            color: rgba(255,255,255,0.9);
+        }
+        .benefit-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        .benefit-item {
+            background: rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .benefit-item .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            display: block;
+        }
+        .benefit-item h4 {
+            margin: 0 0 10px 0;
+            font-size: 1.3em;
+        }
+        .stats {
+            background: #9b59b6;
+            color: white;
+        }
+        .stats h2, .stats h3 {
+            color: white;
+        }
+        .stats p {
+            color: rgba(255,255,255,0.9);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .stat-item .number {
+            font-size: 3em;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .stat-item .label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .tech {
+            background: #34495e;
+            color: white;
+        }
+        .tech h2, .tech h3 {
+            color: white;
+        }
+        .tech p {
+            color: rgba(255,255,255,0.9);
+        }
+        .tech-stack {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 40px 0;
+        }
+        .tech-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        .demo {
+            background: #16a085;
+            color: white;
+        }
+        .demo h2, .demo h3 {
+            color: white;
+        }
+        .demo p {
+            color: rgba(255,255,255,0.9);
+        }
+        .demo-info {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+        }
+        .demo-info h4 {
+            margin: 0 0 15px 0;
+            font-size: 1.4em;
+        }
+        .demo-info ul {
+            text-align: left;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .demo-info li {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+        .next-steps {
+            background: #e67e22;
+            color: white;
+        }
+        .next-steps h2, .next-steps h3 {
+            color: white;
+        }
+        .next-steps p {
+            color: rgba(255,255,255,0.9);
+        }
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        .step-item {
+            background: rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .step-item .icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            display: block;
+        }
+        .step-item h4 {
+            margin: 0 0 10px 0;
+            font-size: 1.3em;
+        }
+        .conclusion {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+        }
+        .conclusion h1, .conclusion h2, .conclusion h3 {
+            color: white;
+        }
+        .conclusion p {
+            color: rgba(255,255,255,0.9);
+        }
+        .cta {
+            background: #e74c3c;
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            margin: 30px 0;
+        }
+        .cta h3 {
+            margin: 0 0 20px 0;
+            font-size: 2em;
+        }
+        .cta p {
+            font-size: 1.2em;
+            margin: 0 0 20px 0;
+        }
+        .cta-button {
+            background: white;
+            color: #e74c3c;
+            padding: 15px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+        .cta-button:hover {
+            transform: scale(1.05);
+        }
+        @media (max-width: 768px) {
+            .slide { padding: 30px; }
+            .slide h1 { font-size: 2.5em; }
+            .slide h2 { font-size: 2em; }
+            .slide h3 { font-size: 1.5em; }
+            .workflow-steps { flex-direction: column; }
+            .workflow-arrow { transform: rotate(90deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation">
+        <!-- Slide 1: Portada -->
+        <div class="slide hero">
+            <h1>🏗️ Sistema de Gestión de Tareas</h1>
+            <p>Plataforma Integral para la Gestión de Trabajos de Mantenimiento</p>
+            <p><strong>MVP - Versión 1.0</strong></p>
+        </div>
+
+        <!-- Slide 2: El Problema -->
+        <div class="slide problem">
+            <h2>❌ El Problema Actual</h2>
+            <h3>Gestión Manual y Descentralizada</h3>
+            <p>Los procesos actuales de gestión de tareas de mantenimiento presentan múltiples desafíos:</p>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="icon">📄</span>
+                    <h4>Documentación en Papel</h4>
+                    <p>Certificados, reportes y seguimiento en formato físico</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">⏰</span>
+                    <h4>Retrasos en Aprobaciones</h4>
+                    <p>Flujo de aprobación lento y propenso a errores</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">🔍</span>
+                    <h4>Falta de Trazabilidad</h4>
+                    <p>Difícil seguimiento del estado de cada tarea</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">📊</span>
+                    <h4>Sin Reportes Centralizados</h4>
+                    <p>Información dispersa y difícil de analizar</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: La Solución -->
+        <div class="slide solution">
+            <h2>✅ Nuestra Solución</h2>
+            <h3>Plataforma Digital Integrada</h3>
+            <p>Un sistema web completo que digitaliza y optimiza todo el ciclo de vida de las tareas de mantenimiento</p>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="icon">🌐</span>
+                    <h4>100% Digital</h4>
+                    <p>Eliminación completa del papel y procesos manuales</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">⚡</span>
+                    <h4>Flujo Automatizado</h4>
+                    <p>Aprobaciones escalonadas con notificaciones automáticas</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">📱</span>
+                    <h4>Acceso Móvil</h4>
+                    <p>Disponible en cualquier dispositivo, en cualquier momento</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">📈</span>
+                    <h4>Reportes en Tiempo Real</h4>
+                    <p>Dashboards y estadísticas actualizadas al instante</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Flujo de Trabajo -->
+        <div class="slide workflow">
+            <h2>🔄 Flujo de Trabajo Optimizado</h2>
+            <h3>Proceso Completo en 8 Pasos</h3>
+            <div class="workflow-steps">
+                <div class="workflow-step">
+                    <div class="number">1</div>
+                    <h4>Inspector</h4>
+                    <p>Crea Tarea</p>
+                </div>
+                <div class="workflow-arrow">→</div>
+                <div class="workflow-step">
+                    <div class="number">2</div>
+                    <h4>Admin</h4>
+                    <p>Asigna WO</p>
+                </div>
+                <div class="workflow-arrow">→</div>
+                <div class="workflow-step">
+                    <div class="number">3</div>
+                    <h4>Proveedor</h4>
+                    <p>Certifica</p>
+                </div>
+                <div class="workflow-arrow">→</div>
+                <div class="workflow-step">
+                    <div class="number">4</div>
+                    <h4>Inspector</h4>
+                    <p>Aproba</p>
+                </div>
+                <div class="workflow-arrow">→</div>
+                <div class="workflow-step">
+                    <div class="number">5</div>
+                    <h4>Supervisor</h4>
+                    <p>Aproba</p>
+                </div>
+                <div class="workflow-arrow">→</div>
+                <div class="workflow-step">
+                    <div class="number">6</div>
+                    <h4>Admin</h4>
+                    <p>Aproba</p>
+                </div>
+                <div class="workflow-arrow">→</div>
+                <div class="workflow-step">
+                    <div class="number">7</div>
+                    <h4>Gerente</h4>
+                    <p>Aproba</p>
+                </div>
+                <div class="workflow-arrow">→</div>
+                <div class="workflow-step">
+                    <div class="number">8</div>
+                    <h4>CERCO</h4>
+                    <p>Finaliza</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Características Principales -->
+        <div class="slide features">
+            <h2>🌟 Características Principales</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="icon">👥</span>
+                    <h4>6 Roles Especializados</h4>
+                    <p>Inspector, Supervisor, Administrativo, Gerente, CERCO y Proveedor</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">🔐</span>
+                    <h4>Control de Acceso</h4>
+                    <p>Permisos granulares y autenticación JWT segura</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">📊</span>
+                    <h4>Dashboards Personalizados</h4>
+                    <p>Interfaz adaptada a las necesidades de cada rol</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">⚠️</span>
+                    <h4>Sistema de Observaciones</h4>
+                    <p>Mecanismo completo para correcciones y mejoras</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">📎</span>
+                    <h4>Gestión de Archivos</h4>
+                    <p>Subida y organización de documentos y fotos</p>
+                </div>
+                <div class="feature-card">
+                    <span class="icon">📱</span>
+                    <h4>Responsive Design</h4>
+                    <p>Optimizado para desktop, tablet y móvil</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Beneficios -->
+        <div class="slide benefits">
+            <h2>💼 Beneficios del Sistema</h2>
+            <div class="benefit-list">
+                <div class="benefit-item">
+                    <span class="icon">⚡</span>
+                    <h4>Eficiencia</h4>
+                    <p>Reducción del 60% en tiempos de procesamiento</p>
+                </div>
+                <div class="benefit-item">
+                    <span class="icon">🎯</span>
+                    <h4>Precisión</h4>
+                    <p>Control de calidad en cada etapa del proceso</p>
+                </div>
+                <div class="benefit-item">
+                    <span class="icon">📋</span>
+                    <h4>Trazabilidad</h4>
+                    <p>Registro completo de todas las acciones</p>
+                </div>
+                <div class="benefit-item">
+                    <span class="icon">🔒</span>
+                    <h4>Seguridad</h4>
+                    <p>Control de acceso y auditoría completa</p>
+                </div>
+                <div class="benefit-item">
+                    <span class="icon">📊</span>
+                    <h4>Reportes</h4>
+                    <p>Exportación de datos y análisis detallado</p>
+                </div>
+                <div class="benefit-item">
+                    <span class="icon">🌐</span>
+                    <h4>Escalabilidad</h4>
+                    <p>Arquitectura preparada para crecer</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Estadísticas -->
+        <div class="slide stats">
+            <h2>📊 Impacto Esperado</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="number">60%</span>
+                    <span class="label">Reducción en Tiempos</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number">100%</span>
+                    <span class="label">Trazabilidad</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number">5</span>
+                    <span class="label">Regiones Cubiertas</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number">6</span>
+                    <span class="label">Roles Integrados</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number">24/7</span>
+                    <span class="label">Disponibilidad</span>
+                </div>
+                <div class="stat-item">
+                    <span class="number">0</span>
+                    <span class="label">Papel Utilizado</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Tecnología -->
+        <div class="slide tech">
+            <h2>🛠️ Stack Tecnológico</h2>
+            <h3>Arquitectura Moderna y Escalable</h3>
+            <div class="tech-stack">
+                <div class="tech-item">SvelteKit</div>
+                <div class="tech-item">TypeScript</div>
+                <div class="tech-item">Node.js</div>
+                <div class="tech-item">Express.js</div>
+                <div class="tech-item">SQLite</div>
+                <div class="tech-item">JWT</div>
+                <div class="tech-item">RESTful API</div>
+                <div class="tech-item">Responsive Design</div>
+            </div>
+            <p>Desarrollado con tecnologías modernas, seguras y escalables</p>
+        </div>
+
+        <!-- Slide 9: Demo -->
+        <div class="slide demo">
+            <h2>🎥 Demostración en Vivo</h2>
+            <h3>Veamos el Sistema en Acción</h3>
+            <div class="demo-info">
+                <h4>🔗 Acceso al Sistema</h4>
+                <ul>
+                    <li><strong>URL:</strong> http://localhost:5173</li>
+                    <li><strong>Usuarios de Prueba:</strong> Disponibles para cada rol</li>
+                    <li><strong>Datos de Prueba:</strong> Tareas y certificados de ejemplo</li>
+                </ul>
+            </div>
+            <div class="demo-info">
+                <h4>👥 Usuarios de Demostración</h4>
+                <ul>
+                    <li><strong>Inspector:</strong> inspectorCABA1@test.com</li>
+                    <li><strong>Administrativo:</strong> administrativo1CN@test.com</li>
+                    <li><strong>Proveedor:</strong> usuario1Fibraytel@test.com</li>
+                    <li><strong>Supervisor:</strong> supervisorMantenimientoCABA@test.com</li>
+                    <li><strong>Gerente:</strong> gerente1CN@test.com</li>
+                    <li><strong>CERCO:</strong> cerco1@test.com</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 10: Próximos Pasos -->
+        <div class="slide next-steps">
+            <h2>🚀 Próximos Pasos</h2>
+            <h3>Roadmap de Desarrollo</h3>
+            <div class="steps-grid">
+                <div class="step-item">
+                    <span class="icon">📱</span>
+                    <h4>App Móvil</h4>
+                    <p>Aplicación nativa para iOS y Android</p>
+                </div>
+                <div class="step-item">
+                    <span class="icon">📊</span>
+                    <h4>Analytics Avanzado</h4>
+                    <p>Reportes y métricas detalladas</p>
+                </div>
+                <div class="step-item">
+                    <span class="icon">🔔</span>
+                    <h4>Notificaciones Push</h4>
+                    <p>Alertas en tiempo real</p>
+                </div>
+                <div class="step-item">
+                    <span class="icon">🤖</span>
+                    <h4>IA y ML</h4>
+                    <p>Predicción de costos y optimización</p>
+                </div>
+                <div class="step-item">
+                    <span class="icon">🔗</span>
+                    <h4>Integraciones</h4>
+                    <p>Conectores con sistemas externos</p>
+                </div>
+                <div class="step-item">
+                    <span class="icon">🌍</span>
+                    <h4>Multi-idioma</h4>
+                    <p>Soporte para múltiples idiomas</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Conclusión -->
+        <div class="slide conclusion">
+            <h2>🎯 Conclusión</h2>
+            <h3>Transformación Digital Completa</h3>
+            <p>El Sistema de Gestión de Tareas representa una solución integral que transforma completamente la forma en que se gestionan los trabajos de mantenimiento.</p>
+            <div class="cta">
+                <h3>¿Listo para la Transformación?</h3>
+                <p>Implementemos juntos esta solución y revolucionemos la gestión de tareas</p>
+                <a href="#" class="cta-button">Comenzar Implementación</a>
+            </div>
+        </div>
+
+        <!-- Slide 12: Contacto -->
+        <div class="slide hero">
+            <h1>📞 Contacto</h1>
+            <p>¿Preguntas? ¿Interesado en implementar?</p>
+            <p><strong>Equipo de Desarrollo</strong></p>
+            <p>📧 desarrollo@sistema.com</p>
+            <p>📱 +54 11 1234-5678</p>
+            <p>🌐 www.sistemagestion.com</p>
+        </div>
+    </div>
+</body>
+</html>

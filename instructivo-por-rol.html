@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructivo por Rol - Sistema de Gestión de Tareas</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px;
+        }
+        .role-section {
+            margin-bottom: 50px;
+            padding: 30px;
+            border-radius: 15px;
+            background: #f8f9fa;
+            border-left: 8px solid;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .role-inspector { border-left-color: #1976d2; }
+        .role-supervisor { border-left-color: #7b1fa2; }
+        .role-admin { border-left-color: #388e3c; }
+        .role-gerente { border-left-color: #f57c00; }
+        .role-cerco { border-left-color: #c2185b; }
+        .role-proveedor { border-left-color: #689f38; }
+        
+        .role-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        .role-icon {
+            font-size: 3em;
+            margin-right: 20px;
+            padding: 20px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .role-info h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 2em;
+        }
+        .role-info p {
+            margin: 5px 0 0 0;
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+        .credentials {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #27ae60;
+        }
+        .credentials h4 {
+            margin: 0 0 10px 0;
+            color: #27ae60;
+        }
+        .step {
+            background: white;
+            margin: 20px 0;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #3498db;
+        }
+        .step-number {
+            background: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .step h4 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 1.3em;
+        }
+        .permissions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .permission-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .permission-card h5 {
+            margin: 0 0 10px 0;
+            color: #27ae60;
+            font-size: 1.1em;
+        }
+        .permission-card ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .permission-card li {
+            margin: 5px 0;
+        }
+        .dashboard-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .dashboard-info h4 {
+            margin: 0 0 15px 0;
+            font-size: 1.3em;
+        }
+        .workflow-visual {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .workflow-step {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            margin: 5px;
+            min-width: 120px;
+        }
+        .workflow-step.active {
+            background: #3498db;
+            color: white;
+        }
+        .workflow-arrow {
+            color: #3498db;
+            font-size: 1.5em;
+            margin: 0 10px;
+        }
+        .tips {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .tips h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+        .warnings {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .warnings h4 {
+            margin: 0 0 10px 0;
+            color: #721c24;
+        }
+        .navigation {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .navigation h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        .navigation a {
+            display: block;
+            padding: 5px 10px;
+            text-decoration: none;
+            color: #3498db;
+            border-radius: 5px;
+            margin: 2px 0;
+        }
+        .navigation a:hover {
+            background: #ecf0f1;
+        }
+        @media (max-width: 768px) {
+            .content { padding: 20px; }
+            .header { padding: 20px; }
+            .header h1 { font-size: 2em; }
+            .workflow-visual { flex-direction: column; }
+            .workflow-arrow { transform: rotate(90deg); }
+            .navigation { position: static; margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="navigation">
+        <h4>Navegación</h4>
+        <a href="#inspector">🔍 Inspector</a>
+        <a href="#supervisor">👨‍💼 Supervisor</a>
+        <a href="#admin">📋 Administrativo</a>
+        <a href="#gerente">👔 Gerente</a>
+        <a href="#cerco">🏢 CERCO</a>
+        <a href="#proveedor">🔧 Proveedor</a>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📚 Instructivo por Rol</h1>
+            <p>Guía detallada para cada tipo de usuario del sistema</p>
+        </div>
+
+        <div class="content">
+            <!-- INSPECTOR -->
+            <div class="role-section role-inspector" id="inspector">
+                <div class="role-header">
+                    <div class="role-icon">🔍</div>
+                    <div class="role-info">
+                        <h2>Inspector</h2>
+                        <p>Punto de entrada del sistema - Crea tareas y supervisa certificados</p>
+                    </div>
+                </div>
+
+                <div class="credentials">
+                    <h4>🔑 Credenciales de Prueba</h4>
+                    <strong>Email:</strong> inspectorCABA1@test.com<br>
+                    <strong>Regiones:</strong> CABA Norte + CABA Sur<br>
+                    <strong>Otros Inspectores:</strong> inspectorCABA2@test.com, inspector1GN@test.com, etc.
+                </div>
+
+                <div class="dashboard-info">
+                    <h4>📊 Tu Dashboard</h4>
+                    <p>Como inspector, tu dashboard muestra:</p>
+                    <ul>
+                        <li><strong>Botón "Crear Nueva Tarea"</strong> - Siempre visible</li>
+                        <li><strong>Tareas de tu región</strong> - Solo CABA Norte y CABA Sur</li>
+                        <li><strong>Filtros por estado</strong> - Asignada, Pendiente Certificación, etc.</li>
+                        <li><strong>Búsqueda rápida</strong> - Por ID, dirección o WO</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <h4>Crear Nueva Tarea</h4>
+                    <ol>
+                        <li>Haz clic en <strong>"Crear Nueva Tarea"</strong> en tu dashboard</li>
+                        <li>Completa el formulario:
+                            <ul>
+                                <li><strong>Descripción:</strong> Describe claramente el trabajo a realizar</li>
+                                <li><strong>Dirección:</strong> Ubicación exacta del trabajo</li>
+                                <li><strong>Región:</strong> Selecciona CABA Norte o CABA Sur</li>
+                                <li><strong>Proveedor:</strong> Elige entre Fibraytel, Firstmeter, Magartel o Optical Power</li>
+                            </ul>
+                        </li>
+                        <li>Sube al menos 2 archivos adjuntos (fotos, planos, etc.)</li>
+                        <li>Haz clic en <strong>"Crear Tarea"</strong></li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <h4>Editar Certificado</h4>
+                    <ol>
+                        <li>Ve al detalle de una tarea en estado <strong>"Pendiente Certificación Inspector"</strong></li>
+                        <li>Haz clic en <strong>"Editar Certificado"</strong></li>
+                        <li>Puedes modificar:
+                            <ul>
+                                <li>Mano de obra utilizada</li>
+                                <li>Materiales utilizados y recuperados</li>
+                                <li>Observaciones adicionales</li>
+                            </ul>
+                        </li>
+                        <li>Guarda los cambios</li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <h4>Aprobar Certificado</h4>
+                    <ol>
+                        <li>Revisa completamente el certificado emitido por el proveedor</li>
+                        <li>Verifica que toda la información sea correcta</li>
+                        <li>Haz clic en <strong>"Aprobar y Finalizar"</strong></li>
+                        <li>Confirma la acción</li>
+                        <li>La tarea pasará a <strong>"Pendiente Aprobación Supervisor"</strong></li>
+                    </ol>
+                </div>
+
+                <div class="permissions">
+                    <div class="permission-card">
+                        <h5>✅ Puedes Hacer</h5>
+                        <ul>
+                            <li>Crear nuevas tareas</li>
+                            <li>Editar certificados en estado "Pendiente Certificación Inspector"</li>
+                            <li>Aprobar certificados</li>
+                            <li>Observar tareas</li>
+                            <li>Reasignar proveedores en tareas "Asignada"</li>
+                            <li>Ver tareas de CABA Norte y CABA Sur</li>
+                        </ul>
+                    </div>
+                    <div class="permission-card">
+                        <h5>❌ No Puedes Hacer</h5>
+                        <ul>
+                            <li>Ver tareas de otras regiones (GBA Norte, GBA Sur, GBA Oeste)</li>
+                            <li>Asignar números de WO</li>
+                            <li>Aprobar a nivel administrativo, gerencial o CERCO</li>
+                            <li>Emitir certificados (solo proveedores)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="workflow-visual">
+                    <div class="workflow-step active">Crear Tarea</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Asigna WO</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Proveedor Certifica</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step active">Tú Apruebas</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Supervisor Aprueba</div>
+                </div>
+
+                <div class="tips">
+                    <h4>💡 Consejos</h4>
+                    <ul>
+                        <li>Siempre sube fotos claras y descriptivas</li>
+                        <li>Revisa cuidadosamente los certificados antes de aprobar</li>
+                        <li>Usa observaciones para solicitar correcciones cuando sea necesario</li>
+                        <li>Mantén actualizada la información de contacto</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- SUPERVISOR -->
+            <div class="role-section role-supervisor" id="supervisor">
+                <div class="role-header">
+                    <div class="role-icon">👨‍💼</div>
+                    <div class="role-info">
+                        <h2>Supervisor</h2>
+                        <p>Supervisa y aprueba tareas, puede reasignar proveedores</p>
+                    </div>
+                </div>
+
+                <div class="credentials">
+                    <h4>🔑 Credenciales de Prueba</h4>
+                    <strong>Email:</strong> supervisorMantenimientoCABA@test.com<br>
+                    <strong>Regiones:</strong> CABA Norte + CABA Sur<br>
+                    <strong>Tipos:</strong> Mantenimiento, Disponibilidad, Soporte, Provisión
+                </div>
+
+                <div class="dashboard-info">
+                    <h4>📊 Tu Dashboard</h4>
+                    <p>Como supervisor, tu dashboard muestra:</p>
+                    <ul>
+                        <li><strong>Tareas pendientes de tu aprobación</strong></li>
+                        <li><strong>Tareas observadas</strong> que requieren tu atención</li>
+                        <li><strong>Filtros por inspector</strong> y estado</li>
+                        <li><strong>Estadísticas de productividad</strong></li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <h4>Aprobar Tarea</h4>
+                    <ol>
+                        <li>Ve a una tarea en estado <strong>"Pendiente Aprobación Supervisor"</strong></li>
+                        <li>Revisa toda la información del certificado</li>
+                        <li>Verifica que el trabajo esté bien documentado</li>
+                        <li>Haz clic en <strong>"Aprobar y Finalizar"</strong></li>
+                        <li>La tarea pasará a <strong>"Pendiente Aprobación Administración"</strong></li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <h4>Observar Tarea</h4>
+                    <ol>
+                        <li>Si encuentras problemas, haz clic en <strong>"Observar"</strong></li>
+                        <li>Escribe una observación clara y específica</li>
+                        <li>Explica qué necesita ser corregido</li>
+                        <li>Envía la observación</li>
+                        <li>La tarea pasará a <strong>"Observada por Supervisor"</strong></li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <h4>Reasignar Proveedor</h4>
+                    <ol>
+                        <li>Ve a una tarea en estado <strong>"Asignada"</strong></li>
+                        <li>Haz clic en <strong>"Reasignar Proveedor"</strong></li>
+                        <li>Selecciona un nuevo proveedor de la lista</li>
+                        <li>Confirma la reasignación</li>
+                        <li>El nuevo proveedor será notificado</li>
+                    </ol>
+                </div>
+
+                <div class="permissions">
+                    <div class="permission-card">
+                        <h5>✅ Puedes Hacer</h5>
+                        <ul>
+                            <li>Aprobar tareas en "Pendiente Aprobación Supervisor"</li>
+                            <li>Editar certificados en "Pendiente Certificación Inspector"</li>
+                            <li>Observar tareas</li>
+                            <li>Reasignar proveedores en tareas "Asignada"</li>
+                            <li>Ver tareas de tu región asignada</li>
+                        </ul>
+                    </div>
+                    <div class="permission-card">
+                        <h5>❌ No Puedes Hacer</h5>
+                        <ul>
+                            <li>Crear nuevas tareas</li>
+                            <li>Asignar números de WO</li>
+                            <li>Aprobar a nivel administrativo, gerencial o CERCO</li>
+                            <li>Emitir certificados</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="workflow-visual">
+                    <div class="workflow-step">Inspector Crea</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Asigna WO</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Proveedor Certifica</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Inspector Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step active">Tú Apruebas</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Aprueba</div>
+                </div>
+
+                <div class="tips">
+                    <h4>💡 Consejos</h4>
+                    <ul>
+                        <li>Revisa la calidad del trabajo antes de aprobar</li>
+                        <li>Usa observaciones constructivas y específicas</li>
+                        <li>Mantén comunicación fluida con inspectores</li>
+                        <li>Supervisa el rendimiento de los proveedores</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- ADMINISTRATIVO -->
+            <div class="role-section role-admin" id="admin">
+                <div class="role-header">
+                    <div class="role-icon">📋</div>
+                    <div class="role-info">
+                        <h2>Administrativo</h2>
+                        <p>Asigna WO, aprueba administrativamente y exporta materiales</p>
+                    </div>
+                </div>
+
+                <div class="credentials">
+                    <h4>🔑 Credenciales de Prueba</h4>
+                    <strong>Email:</strong> administrativo1CN@test.com<br>
+                    <strong>Región:</strong> CABA Norte<br>
+                    <strong>Otros:</strong> administrativo1CS@test.com, administrativo1GN@test.com, etc.
+                </div>
+
+                <div class="dashboard-info">
+                    <h4>📊 Tu Dashboard</h4>
+                    <p>Como administrativo, tu dashboard muestra:</p>
+                    <ul>
+                        <li><strong>Pendientes de carga WO</strong> - Tareas sin número de WO</li>
+                        <li><strong>Pendientes de mi aprobación</strong> - Tareas listas para aprobar</li>
+                        <li><strong>Tareas generadas (con WO)</strong> - Tareas con WO asignado</li>
+                        <li><strong>Aprobadas por mí</strong> - Tareas que ya aprobaste</li>
+                        <li><strong>Filtros específicos</strong> para administración</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <h4>Asignar Número de WO</h4>
+                    <ol>
+                        <li>Ve a una tarea en estado <strong>"Asignada"</strong></li>
+                        <li>En el panel de WO, ingresa el número (ej: "WO-2024-001")</li>
+                        <li>Haz clic en <strong>"Guardar WO"</strong></li>
+                        <li>La tarea ahora tiene número de WO oficial</li>
+                        <li>El proveedor puede proceder a certificar</li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <h4>Exportar Materiales</h4>
+                    <ol>
+                        <li>Ve a una tarea en estado <strong>"Pendiente Aprobación Administración"</strong></li>
+                        <li>Haz clic en <strong>"Exportar Materiales"</strong></li>
+                        <li>Se descargará un archivo Excel con:
+                            <ul>
+                                <li>Materiales utilizados</li>
+                                <li>Materiales recuperados</li>
+                                <li>Cantidades y costos</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <h4>Aprobar Administrativamente</h4>
+                    <ol>
+                        <li>Revisa toda la información de la tarea</li>
+                        <li>Verifica que los materiales estén correctos</li>
+                        <li>Haz clic en <strong>"Aprobar y Finalizar"</strong></li>
+                        <li>La tarea pasará a <strong>"Pendiente Aprobación Gerente"</strong> o <strong>"Pendiente Aprobación CERCO"</strong></li>
+                        <li>El mensaje será genérico: "La tarea ha pasado a la siguiente etapa"</li>
+                    </ol>
+                </div>
+
+                <div class="permissions">
+                    <div class="permission-card">
+                        <h5>✅ Puedes Hacer</h5>
+                        <ul>
+                            <li>Asignar números de WO en tareas "Asignada"</li>
+                            <li>Aprobar tareas en "Pendiente Aprobación Administración"</li>
+                            <li>Exportar materiales a Excel</li>
+                            <li>Observar tareas</li>
+                            <li>VER todas las tareas de tu región</li>
+                        </ul>
+                    </div>
+                    <div class="permission-card">
+                        <h5>❌ No Puedes Hacer</h5>
+                        <ul>
+                            <li>Crear nuevas tareas</li>
+                            <li>Editar certificados</li>
+                            <li>Aprobar a nivel supervisor, gerencial o CERCO</li>
+                            <li>Emitir certificados</li>
+                            <li>Ver tareas de otras regiones</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="workflow-visual">
+                    <div class="workflow-step">Inspector Crea</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step active">Tú Asignas WO</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Proveedor Certifica</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Inspector Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Supervisor Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step active">Tú Apruebas</div>
+                </div>
+
+                <div class="warnings">
+                    <h4>⚠️ Restricciones Importantes</h4>
+                    <ul>
+                        <li>Solo puedes ACTUAR en tareas "Asignada" y "Pendiente Aprobación Administración"</li>
+                        <li>Puedes VER todas las tareas de tu región, pero solo ACTUAR en los estados mencionados</li>
+                        <li>No puedes modificar certificados, solo aprobar o observar</li>
+                    </ul>
+                </div>
+
+                <div class="tips">
+                    <h4>💡 Consejos</h4>
+                    <ul>
+                        <li>Asigna WO de forma consistente (ej: WO-2024-001, WO-2024-002)</li>
+                        <li>Exporta materiales antes de aprobar para tener respaldo</li>
+                        <li>Revisa cuidadosamente los costos antes de aprobar</li>
+                        <li>Mantén un registro de los WO asignados</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- GERENTE -->
+            <div class="role-section role-gerente" id="gerente">
+                <div class="role-header">
+                    <div class="role-icon">👔</div>
+                    <div class="role-info">
+                        <h2>Gerente</h2>
+                        <p>Aprobación gerencial para tareas que requieren autorización especial</p>
+                    </div>
+                </div>
+
+                <div class="credentials">
+                    <h4>🔑 Credenciales de Prueba</h4>
+                    <strong>Email:</strong> gerente1CN@test.com<br>
+                    <strong>Región:</strong> CABA Norte<br>
+                    <strong>Otros:</strong> gerente1CS@test.com, gerente1GN@test.com, etc.
+                </div>
+
+                <div class="dashboard-info">
+                    <h4>📊 Tu Dashboard</h4>
+                    <p>Como gerente, tu dashboard muestra:</p>
+                    <ul>
+                        <li><strong>Tareas pendientes de aprobación gerencial</strong></li>
+                        <li><strong>Tareas observadas</strong> que requieren tu atención</li>
+                        <li><strong>Estadísticas de aprobación</strong></li>
+                        <li><strong>Filtros por región y estado</strong></li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <h4>Aprobar Gerencialmente</h4>
+                    <ol>
+                        <li>Ve a una tarea en estado <strong>"Pendiente Aprobación Gerente"</strong></li>
+                        <li>Revisa toda la información y costos</li>
+                        <li>Verifica que cumple con los estándares gerenciales</li>
+                        <li>Haz clic en <strong>"Aprobar y Finalizar"</strong></li>
+                        <li>La tarea pasará a <strong>"Pendiente Aprobación CERCO"</strong></li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <h4>Observar Tarea</h4>
+                    <ol>
+                        <li>Si encuentras problemas, haz clic en <strong>"Observar"</strong></li>
+                        <li>Escribe una observación gerencial específica</li>
+                        <li>Explica qué necesita ser corregido</li>
+                        <li>Envía la observación</li>
+                        <li>La tarea pasará a <strong>"Observada por Gerente"</strong></li>
+                    </ol>
+                </div>
+
+                <div class="permissions">
+                    <div class="permission-card">
+                        <h5>✅ Puedes Hacer</h5>
+                        <ul>
+                            <li>Aprobar tareas en "Pendiente Aprobación Gerente"</li>
+                            <li>Observar tareas</li>
+                            <li>Ver tareas de tu región asignada</li>
+                            <li>Revisar costos y presupuestos</li>
+                        </ul>
+                    </div>
+                    <div class="permission-card">
+                        <h5>❌ No Puedes Hacer</h5>
+                        <ul>
+                            <li>Crear nuevas tareas</li>
+                            <li>Asignar números de WO</li>
+                            <li>Editar certificados</li>
+                            <li>Aprobar a nivel supervisor, administrativo o CERCO</li>
+                            <li>Emitir certificados</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="workflow-visual">
+                    <div class="workflow-step">Inspector Crea</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Asigna WO</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Proveedor Certifica</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Inspector Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Supervisor Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step active">Tú Apruebas</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">CERCO Aprueba</div>
+                </div>
+
+                <div class="tips">
+                    <h4>💡 Consejos</h4>
+                    <ul>
+                        <li>Revisa cuidadosamente los costos antes de aprobar</li>
+                        <li>Verifica que cumple con políticas gerenciales</li>
+                        <li>Usa observaciones para mantener estándares de calidad</li>
+                        <li>Mantén comunicación con el equipo administrativo</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- CERCO -->
+            <div class="role-section role-cerco" id="cerco">
+                <div class="role-header">
+                    <div class="role-icon">🏢</div>
+                    <div class="role-info">
+                        <h2>CERCO</h2>
+                        <p>Aprobación final nacional - Puede ver todas las regiones</p>
+                    </div>
+                </div>
+
+                <div class="credentials">
+                    <h4>🔑 Credenciales de Prueba</h4>
+                    <strong>Email:</strong> cerco1@test.com<br>
+                    <strong>Alcance:</strong> Nacional (todas las regiones)<br>
+                    <strong>Otros:</strong> cerco2@test.com, cerco3@test.com, etc.
+                </div>
+
+                <div class="dashboard-info">
+                    <h4>📊 Tu Dashboard</h4>
+                    <p>Como CERCO, tu dashboard muestra:</p>
+                    <ul>
+                        <li><strong>Tareas de TODAS las regiones</strong></li>
+                        <li><strong>Pendientes de mi aprobación</strong> - Tareas listas para aprobación final</li>
+                        <li><strong>Filtros por región</strong> - Puedes filtrar por cualquier región</li>
+                        <li><strong>Estadísticas nacionales</strong></li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <h4>Aprobación Final</h4>
+                    <ol>
+                        <li>Ve a una tarea en estado <strong>"Pendiente Aprobación CERCO"</strong></li>
+                        <li>Revisa toda la información del trabajo</li>
+                        <li>Verifica que cumple con estándares nacionales</li>
+                        <li>Haz clic en <strong>"Aprobar y Finalizar"</strong></li>
+                        <li>La tarea pasará a <strong>"Finalizada - Aprobada"</strong></li>
+                        <li>¡El proceso está completo!</li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <h4>Observar Tarea</h4>
+                    <ol>
+                        <li>Si encuentras problemas, haz clic en <strong>"Observar"</strong></li>
+                        <li>Escribe una observación nacional específica</li>
+                        <li>Explica qué necesita ser corregido</li>
+                        <li>Envía la observación</li>
+                        <li>La tarea pasará a <strong>"Observada por CERCO"</strong></li>
+                    </ol>
+                </div>
+
+                <div class="permissions">
+                    <div class="permission-card">
+                        <h5>✅ Puedes Hacer</h5>
+                        <ul>
+                            <li>Aprobar tareas en "Pendiente Aprobación CERCO"</li>
+                            <li>Observar tareas</li>
+                            <li>Ver tareas de TODAS las regiones</li>
+                            <li>Filtrar por cualquier región</li>
+                            <li>Finalizar tareas definitivamente</li>
+                        </ul>
+                    </div>
+                    <div class="permission-card">
+                        <h5>❌ No Puedes Hacer</h5>
+                        <ul>
+                            <li>Crear nuevas tareas</li>
+                            <li>Asignar números de WO</li>
+                            <li>Editar certificados</li>
+                            <li>Aprobar a nivel supervisor, administrativo o gerencial</li>
+                            <li>Emitir certificados</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="workflow-visual">
+                    <div class="workflow-step">Inspector Crea</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Asigna WO</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Proveedor Certifica</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Inspector Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Supervisor Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Gerente Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step active">Tú Apruebas FINAL</div>
+                </div>
+
+                <div class="warnings">
+                    <h4>⚠️ Importante</h4>
+                    <ul>
+                        <li>Una vez que apruebas, la tarea queda <strong>"Finalizada - Aprobada"</strong></li>
+                        <li>NO aparecerá más la barra de acciones para ningún rol</li>
+                        <li>Es la aprobación definitiva del proceso</li>
+                    </ul>
+                </div>
+
+                <div class="tips">
+                    <h4>💡 Consejos</h4>
+                    <ul>
+                        <li>Revisa cuidadosamente antes de la aprobación final</li>
+                        <li>Verifica que cumple con estándares nacionales</li>
+                        <li>Usa tu visión nacional para detectar inconsistencias</li>
+                        <li>Mantén comunicación con gerentes regionales</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- PROVEEDOR -->
+            <div class="role-section role-proveedor" id="proveedor">
+                <div class="role-header">
+                    <div class="role-icon">🔧</div>
+                    <div class="role-info">
+                        <h2>Proveedor</h2>
+                        <p>Ejecuta trabajos, emite certificados y sube evidencia</p>
+                    </div>
+                </div>
+
+                <div class="credentials">
+                    <h4>🔑 Credenciales de Prueba</h4>
+                    <strong>Email:</strong> usuario1Fibraytel@test.com<br>
+                    <strong>Empresa:</strong> Fibraytel S.A. (M024 - RC01)<br>
+                    <strong>Otros:</strong> usuario1Firstmeter@test.com, usuario1Magartel@test.com, etc.
+                </div>
+
+                <div class="dashboard-info">
+                    <h4>📊 Tu Dashboard</h4>
+                    <p>Como proveedor, tu dashboard muestra:</p>
+                    <ul>
+                        <li><strong>Tareas asignadas</strong> con número de WO</li>
+                        <li><strong>Tareas observadas</strong> que requieren corrección</li>
+                        <li><strong>Filtros por estado</strong> y región</li>
+                        <li><strong>Historial de trabajos</strong> realizados</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <h4>Emitir Certificado</h4>
+                    <ol>
+                        <li>Ve a una tarea en estado <strong>"Asignada"</strong> con número de WO</li>
+                        <li>Haz clic en <strong>"Emitir Certificado"</strong></li>
+                        <li>Completa el formulario:
+                            <ul>
+                                <li><strong>Mano de obra:</strong> Agrega al menos 2 items</li>
+                                <li><strong>Materiales utilizados:</strong> Lista completa</li>
+                                <li><strong>Materiales recuperados:</strong> Si los hay</li>
+                                <li><strong>Observaciones:</strong> Detalles del trabajo</li>
+                            </ul>
+                        </li>
+                        <li>Sube al menos 3 fotos del trabajo realizado</li>
+                        <li>Guarda el certificado</li>
+                        <li>La tarea pasará a <strong>"Pendiente Certificación Inspector"</strong></li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <h4>Resolver Observación</h4>
+                    <ol>
+                        <li>Ve a una tarea en estado <strong>"Observada por [Rol]"</strong></li>
+                        <li>Lee la observación cuidadosamente</li>
+                        <li>Haz clic en <strong>"Finalizar Observación"</strong></li>
+                        <li>Escribe la corrección realizada</li>
+                        <li>Sube evidencia adicional si es necesario</li>
+                        <li>Envía la corrección</li>
+                        <li>La tarea volverá al estado anterior</li>
+                    </ol>
+                </div>
+
+                <div class="permissions">
+                    <div class="permission-card">
+                        <h5>✅ Puedes Hacer</h5>
+                        <ul>
+                            <li>Emitir certificados en tareas "Asignada" con WO</li>
+                            <li>Subir archivos adjuntos y fotos</li>
+                            <li>Resolver observaciones</li>
+                            <li>Ver tareas asignadas a tu empresa</li>
+                            <li>Agregar mano de obra y materiales</li>
+                        </ul>
+                    </div>
+                    <div class="permission-card">
+                        <h5>❌ No Puedes Hacer</h5>
+                        <ul>
+                            <li>Crear nuevas tareas</li>
+                            <li>Asignar números de WO</li>
+                            <li>Aprobar tareas</li>
+                            <li>Observar tareas</li>
+                            <li>Editar certificados ya emitidos</li>
+                            <li>Ver tareas de otras empresas</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="workflow-visual">
+                    <div class="workflow-step">Inspector Crea</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Asigna WO</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step active">Tú Certificas</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Inspector Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Supervisor Aprueba</div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">Admin Aprueba</div>
+                </div>
+
+                <div class="tips">
+                    <h4>💡 Consejos</h4>
+                    <ul>
+                        <li>Sube fotos claras y de buena calidad</li>
+                        <li>Detalla bien la mano de obra utilizada</li>
+                        <li>Lista todos los materiales utilizados y recuperados</li>
+                        <li>Responde rápidamente a las observaciones</li>
+                        <li>Mantén comunicación con el inspector asignado</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

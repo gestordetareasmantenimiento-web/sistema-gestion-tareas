@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía Completa de Testing - Sistema de Gestión de Tareas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            background: #ecf0f1;
+            padding: 10px;
+            border-left: 5px solid #3498db;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #2980b9;
+            margin-top: 25px;
+        }
+        .step {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .step-number {
+            background: #3498db;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .role {
+            background: #e74c3c;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .state {
+            background: #f39c12;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .action {
+            background: #27ae60;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .checklist {
+            background: #e8f5e8;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .checklist input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .flow-diagram {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .flow-step {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .flow-arrow {
+            color: #3498db;
+            font-size: 1.5em;
+            margin: 0 10px;
+        }
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Guía Completa de Testing - Sistema de Gestión de Tareas</h1>
+        
+        <div class="warning">
+            <strong>⚠️ IMPORTANTE:</strong> Esta guía cubre TODOS los escenarios posibles del ciclo de vida de las tareas. 
+            Usa esta lista para verificar que cada funcionalidad funciona correctamente.
+        </div>
+
+        <h2>📋 Información del Sistema</h2>
+        <div class="step">
+            <strong>URL Frontend:</strong> http://localhost:5173<br>
+            <strong>URL Backend:</strong> http://localhost:3000<br>
+            <strong>Base de Datos:</strong> backend/development.db<br>
+            <strong>Usuarios de Prueba:</strong> Ver tabla de usuarios más abajo
+        </div>
+
+        <h2>👥 Usuarios de Prueba Disponibles (Datos Reales de BD)</h2>
+        <table>
+            <tr>
+                <th>Rol</th>
+                <th>Email</th>
+                <th>Región</th>
+                <th>Funciones</th>
+            </tr>
+            <tr>
+                <td><span class="role">Inspector</span></td>
+                <td>inspectorCABA1@test.com</td>
+                <td>CABA Norte + CABA Sur</td>
+                <td>Crear tareas, Editar certificados, Aprobar certificados</td>
+            </tr>
+            <tr>
+                <td><span class="role">Supervisor Mantenimiento</span></td>
+                <td>supervisorMantenimientoCABA@test.com</td>
+                <td>CABA Norte + CABA Sur</td>
+                <td>Aprobar tareas, Observar, Reasignar proveedores</td>
+            </tr>
+            <tr>
+                <td><span class="role">Administrativo</span></td>
+                <td>administrativo1CN@test.com</td>
+                <td>CABA Norte</td>
+                <td>Asignar WO, Aprobar administración, Exportar materiales</td>
+            </tr>
+            <tr>
+                <td><span class="role">Gerente</span></td>
+                <td>gerente1CN@test.com</td>
+                <td>CABA Norte</td>
+                <td>Aprobar gerencia, Observar</td>
+            </tr>
+            <tr>
+                <td><span class="role">CERCO</span></td>
+                <td>cerco1@test.com</td>
+                <td>CABA Norte (Nacional)</td>
+                <td>Aprobar final, Observar, Ver todas las regiones</td>
+            </tr>
+            <tr>
+                <td><span class="role">Proveedor</span></td>
+                <td>usuario1Fibraytel@test.com</td>
+                <td>CABA Norte</td>
+                <td>Emitir certificados, Subir adjuntos</td>
+            </tr>
+        </table>
+
+        <h3>📊 Información Adicional de la Base de Datos</h3>
+        <div class="step">
+            <strong>Regiones Disponibles:</strong><br>
+            • Capital Norte (ID: 6)<br>
+            • Capital Sur (ID: 10)<br>
+            • GBA Norte (ID: 8)<br>
+            • GBA Oeste (ID: 9)<br>
+            • GBA Sur (ID: 7)
+        </div>
+
+        <div class="step">
+            <strong>Proveedores Disponibles:</strong><br>
+            • Fibraytel S.A. (M024 - RC01)<br>
+            • Firstmeter S.A. (M854 - RI16)<br>
+            • Magartel S.A. (M249 - RI03)<br>
+            • Optical Power S.A. (M321 - RI13)
+        </div>
+
+        <div class="step">
+            <strong>Usuarios Adicionales por Región:</strong><br>
+            <strong>CABA Norte:</strong> Inspector CABA 1, Administrativo 1 CN, Gerente 1 CN, CERCO 1, Usuario 1 Fibraytel<br>
+            <strong>Otras Regiones:</strong> Hay usuarios similares en GBA Norte, GBA Sur, GBA Oeste, Capital Sur
+        </div>
+
+        <h2>🔄 Flujo Normal del Ciclo de Vida</h2>
+        <div class="flow-diagram">
+            <div class="flow-step">Inspector<br>Crea Tarea</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Admin<br>Asigna WO</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Proveedor<br>Certifica</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Inspector<br>Aproba</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Supervisor<br>Aproba</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Admin<br>Aproba</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">Gerente<br>Aproba</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">CERCO<br>Finaliza</div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 1: FLUJO NORMAL</h2>
+        
+        <h3>Fase 1: Creación de Tarea</h3>
+        <div class="step">
+            <span class="step-number">1.1</span>
+            <strong>Login como Inspector:</strong> inspectorCABA1@test.com<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que aparece el botón "Crear Nueva Tarea"<br>
+                <input type="checkbox"> Verificar que ve tareas de CABA Norte y CABA Sur<br>
+                <input type="checkbox"> Verificar que no puede ver tareas de GBA Norte, GBA Sur, GBA Oeste
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">1.2</span>
+            <strong>Crear nueva tarea:</strong><br>
+            • Descripción: "Prueba de flujo normal"<br>
+            • Dirección: "Av. Test 123"<br>
+            • Región: CABA Norte<br>
+            • Proveedor: Fibraytel S.A. (M024 - RC01)<br>
+            • Subir al menos 2 archivos adjuntos<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea se crea correctamente<br>
+                <input type="checkbox"> Verificar que aparece en estado "Asignada"<br>
+                <input type="checkbox"> Verificar que los archivos se suben correctamente<br>
+                <input type="checkbox"> Anotar el ID de la tarea: ___________
+            </div>
+        </div>
+
+        <h3>Fase 2: Asignación de WO</h3>
+        <div class="step">
+            <span class="step-number">2.1</span>
+            <strong>Login como Administrativo:</strong> administrativo1CN@test.com<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que ve la tarea recién creada<br>
+                <input type="checkbox"> Verificar que aparece en "Pendientes de carga WO"<br>
+                <input type="checkbox"> Verificar que puede ver el detalle de la tarea
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">2.2</span>
+            <strong>Asignar número de WO:</strong><br>
+            • Ir al detalle de la tarea<br>
+            • En el panel de WO, ingresar: "WO-TEST-001"<br>
+            • Guardar<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que el WO se asigna correctamente<br>
+                <input type="checkbox"> Verificar que la tarea sigue en estado "Asignada"<br>
+                <input type="checkbox"> Verificar que aparece en "Tareas generadas (con WO)"
+            </div>
+        </div>
+
+        <h3>Fase 3: Certificación por Proveedor</h3>
+        <div class="step">
+            <span class="step-number">3.1</span>
+            <strong>Login como Proveedor:</strong> usuario1Fibraytel@test.com<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que ve la tarea con WO asignado<br>
+                <input type="checkbox"> Verificar que aparece el botón "Emitir Certificado"<br>
+                <input type="checkbox"> Verificar que puede ver los archivos adjuntos
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">3.2</span>
+            <strong>Emitir certificado:</strong><br>
+            • Ir al detalle de la tarea<br>
+            • Hacer clic en "Emitir Certificado"<br>
+            • Completar el formulario con datos de prueba<br>
+            • Agregar mano de obra (al menos 2 items)<br>
+            • Agregar materiales utilizados y recuperados<br>
+            • Subir al menos 3 fotos adicionales<br>
+            • Guardar certificado<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que el certificado se emite correctamente<br>
+                <input type="checkbox"> Verificar que la tarea pasa a "Pendiente Certificación Inspector"<br>
+                <input type="checkbox"> Verificar que se pueden ver todos los datos del certificado
+            </div>
+        </div>
+
+        <h3>Fase 4: Aprobación por Inspector</h3>
+        <div class="step">
+            <span class="step-number">4.1</span>
+            <strong>Login como Inspector:</strong> inspectorCABA1@test.com<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que ve la tarea en "Pendiente Certificación Inspector"<br>
+                <input type="checkbox"> Verificar que puede ver el certificado completo<br>
+                <input type="checkbox"> Verificar que aparece el botón "Aprobar y Finalizar"
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">4.2</span>
+            <strong>Aprobar certificado:</strong><br>
+            • Ir al detalle de la tarea<br>
+            • Revisar toda la información del certificado<br>
+            • Hacer clic en "Aprobar y Finalizar"<br>
+            • Confirmar la acción<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Pendiente Aprobación Supervisor"<br>
+                <input type="checkbox"> Verificar que aparece el mensaje de éxito<br>
+                <input type="checkbox"> Verificar que el inspector ya no puede editar el certificado
+            </div>
+        </div>
+
+        <h3>Fase 5: Aprobación por Supervisor</h3>
+        <div class="step">
+            <span class="step-number">5.1</span>
+            <strong>Login como Supervisor:</strong> supervisorMantenimientoCABA@test.com<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que ve la tarea en "Pendiente Aprobación Supervisor"<br>
+                <input type="checkbox"> Verificar que puede ver toda la información<br>
+                <input type="checkbox"> Verificar que aparece el botón "Aprobar y Finalizar"
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">5.2</span>
+            <strong>Aprobar por supervisor:</strong><br>
+            • Ir al detalle de la tarea<br>
+            • Revisar toda la información<br>
+            • Hacer clic en "Aprobar y Finalizar"<br>
+            • Confirmar la acción<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Pendiente Aprobación Administración"<br>
+                <input type="checkbox"> Verificar que aparece el mensaje de éxito
+            </div>
+        </div>
+
+        <h3>Fase 6: Aprobación por Administración</h3>
+        <div class="step">
+            <span class="step-number">6.1</span>
+            <strong>Login como Administrativo:</strong> administrativo1CN@test.com<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que ve la tarea en "Pendiente Aprobación Administración"<br>
+                <input type="checkbox"> Verificar que puede exportar materiales<br>
+                <input type="checkbox"> Verificar que aparece el botón "Aprobar y Finalizar"
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">6.2</span>
+            <strong>Exportar materiales (opcional):</strong><br>
+            • Hacer clic en "Exportar Materiales"<br>
+            • Verificar que se descarga el archivo Excel<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que se descarga el archivo correctamente
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">6.3</span>
+            <strong>Aprobar por administración:</strong><br>
+            • Hacer clic en "Aprobar y Finalizar"<br>
+            • Confirmar la acción<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Pendiente Aprobación Gerente" o "Pendiente Aprobación CERCO"<br>
+                <input type="checkbox"> Verificar que aparece el mensaje genérico de éxito
+            </div>
+        </div>
+
+        <h3>Fase 7: Aprobación por Gerente (si aplica)</h3>
+        <div class="step">
+            <span class="step-number">7.1</span>
+            <strong>Si la tarea requiere aprobación gerente:</strong><br>
+            <strong>Login como Gerente:</strong> gerente1CN@test.com<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que ve la tarea en "Pendiente Aprobación Gerente"<br>
+                <input type="checkbox"> Verificar que puede ver toda la información<br>
+                <input type="checkbox"> Verificar que aparece el botón "Aprobar y Finalizar"
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">7.2</span>
+            <strong>Aprobar por gerente:</strong><br>
+            • Hacer clic en "Aprobar y Finalizar"<br>
+            • Confirmar la acción<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Pendiente Aprobación CERCO"<br>
+                <input type="checkbox"> Verificar que aparece el mensaje de éxito
+            </div>
+        </div>
+
+        <h3>Fase 8: Aprobación Final por CERCO</h3>
+        <div class="step">
+            <span class="step-number">8.1</span>
+            <strong>Login como CERCO:</strong> cerco1@test.com<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que ve la tarea en "Pendiente Aprobación CERCO"<br>
+                <input type="checkbox"> Verificar que puede ver tareas de TODAS las regiones<br>
+                <input type="checkbox"> Verificar que aparece el botón "Aprobar y Finalizar"
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">8.2</span>
+            <strong>Aprobar final por CERCO:</strong><br>
+            • Hacer clic en "Aprobar y Finalizar"<br>
+            • Confirmar la acción<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Finalizada - Aprobada"<br>
+                <input type="checkbox"> Verificar que aparece el mensaje de éxito<br>
+                <input type="checkbox"> Verificar que YA NO aparece la barra de acciones
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 2: OBSERVACIONES</h2>
+
+        <h3>Observación por Inspector</h3>
+        <div class="step">
+            <span class="step-number">O1</span>
+            <strong>Crear nueva tarea y observarla:</strong><br>
+            • Seguir pasos 1.1-3.2 del escenario 1<br>
+            • En lugar de aprobar, hacer clic en "Observar"<br>
+            • Escribir observación: "Faltan fotos del trabajo realizado"<br>
+            • Enviar observación<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Observada por Inspector"<br>
+                <input type="checkbox"> Verificar que el proveedor puede ver la observación<br>
+                <input type="checkbox"> Verificar que el proveedor puede responder
+            </div>
+        </div>
+
+        <h3>Observación por Supervisor</h3>
+        <div class="step">
+            <span class="step-number">O2</span>
+            <strong>Observar desde supervisor:</strong><br>
+            • Seguir pasos 1.1-4.2 del escenario 1<br>
+            • En lugar de aprobar, hacer clic en "Observar"<br>
+            • Escribir observación: "Revisar calidad de materiales"<br>
+            • Enviar observación<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Observada por Supervisor"<br>
+                <input type="checkbox"> Verificar que el inspector puede ver la observación
+            </div>
+        </div>
+
+        <h3>Observación por Administración</h3>
+        <div class="step">
+            <span class="step-number">O3</span>
+            <strong>Observar desde administración:</strong><br>
+            • Seguir pasos 1.1-5.2 del escenario 1<br>
+            • En lugar de aprobar, hacer clic en "Observar"<br>
+            • Escribir observación: "Verificar costos de mano de obra"<br>
+            • Enviar observación<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Observada por Administración"<br>
+                <input type="checkbox"> Verificar que el supervisor puede ver la observación
+            </div>
+        </div>
+
+        <h3>Observación por Gerente</h3>
+        <div class="step">
+            <span class="step-number">O4</span>
+            <strong>Observar desde gerente:</strong><br>
+            • Seguir pasos 1.1-6.3 del escenario 1<br>
+            • En lugar de aprobar, hacer clic en "Observar"<br>
+            • Escribir observación: "Revisar procedimientos de seguridad"<br>
+            • Enviar observación<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Observada por Gerente"<br>
+                <input type="checkbox"> Verificar que la administración puede ver la observación
+            </div>
+        </div>
+
+        <h3>Observación por CERCO</h3>
+        <div class="step">
+            <span class="step-number">O5</span>
+            <strong>Observar desde CERCO:</strong><br>
+            • Seguir pasos 1.1-7.2 del escenario 1<br>
+            • En lugar de aprobar, hacer clic en "Observar"<br>
+            • Escribir observación: "Verificar cumplimiento normativo"<br>
+            • Enviar observación<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea pasa a "Observada por CERCO"<br>
+                <input type="checkbox"> Verificar que el gerente puede ver la observación
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 3: RESOLUCIÓN DE OBSERVACIONES</h2>
+
+        <h3>Resolver Observación - Proveedor</h3>
+        <div class="step">
+            <span class="step-number">R1</span>
+            <strong>Proveedor resuelve observación:</strong><br>
+            • Login como proveedor<br>
+            • Ir a tarea observada<br>
+            • Hacer clic en "Finalizar Observación"<br>
+            • Escribir corrección: "Se agregaron las fotos faltantes"<br>
+            • Subir fotos adicionales<br>
+            • Enviar corrección<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea vuelve al estado anterior<br>
+                <input type="checkbox"> Verificar que el inspector puede ver la corrección<br>
+                <input type="checkbox"> Verificar que se pueden ver las fotos adicionales
+            </div>
+        </div>
+
+        <h3>Resolver Observación - Inspector</h3>
+        <div class="step">
+            <span class="step-number">R2</span>
+            <strong>Inspector resuelve observación:</strong><br>
+            • Login como inspector<br>
+            • Ir a tarea observada<br>
+            • Hacer clic en "Pasar Observación"<br>
+            • Escribir corrección: "Se corrigieron los materiales"<br>
+            • Enviar corrección<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que la tarea vuelve al estado anterior<br>
+                <input type="checkbox"> Verificar que el supervisor puede ver la corrección
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 4: EDICIÓN DE CERTIFICADOS</h2>
+
+        <h3>Editar Certificado - Inspector</h3>
+        <div class="step">
+            <span class="step-number">E1</span>
+            <strong>Inspector edita certificado:</strong><br>
+            • Seguir pasos 1.1-3.2 del escenario 1<br>
+            • Login como inspector<br>
+            • Ir al detalle de la tarea<br>
+            • Hacer clic en "Editar Certificado"<br>
+            • Modificar algunos datos (mano de obra, materiales)<br>
+            • Guardar cambios<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que los cambios se guardan correctamente<br>
+                <input type="checkbox"> Verificar que la tarea sigue en el mismo estado<br>
+                <input type="checkbox"> Verificar que se registra la edición en el historial
+            </div>
+        </div>
+
+        <h3>Editar Certificado - Supervisor</h3>
+        <div class="step">
+            <span class="step-number">E2</span>
+            <strong>Supervisor edita certificado:</strong><br>
+            • Seguir pasos 1.1-4.2 del escenario 1<br>
+            • Login como supervisor<br>
+            • Ir al detalle de la tarea<br>
+            • Hacer clic en "Editar Certificado"<br>
+            • Modificar algunos datos<br>
+            • Guardar cambios<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que los cambios se guardan correctamente<br>
+                <input type="checkbox"> Verificar que la tarea sigue en el mismo estado
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 5: REASIGNACIÓN DE PROVEEDORES</h2>
+
+        <h3>Reasignar Proveedor</h3>
+        <div class="step">
+            <span class="step-number">RE1</span>
+            <strong>Inspector reasigna proveedor:</strong><br>
+            • Crear nueva tarea (pasos 1.1-1.2)<br>
+            • En el detalle de la tarea<br>
+            • Hacer clic en "Reasignar Proveedor"<br>
+            • Seleccionar un proveedor diferente<br>
+            • Confirmar reasignación<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que el proveedor se cambia correctamente<br>
+                <input type="checkbox"> Verificar que se notifica al nuevo proveedor<br>
+                <input type="checkbox"> Verificar que la tarea sigue en estado "Asignada"
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">RE2</span>
+            <strong>Supervisor reasigna proveedor:</strong><br>
+            • Seguir pasos 1.1-1.2 del escenario 1<br>
+            • Login como supervisor<br>
+            • Ir al detalle de la tarea<br>
+            • Hacer clic en "Reasignar Proveedor"<br>
+            • Seleccionar un proveedor diferente<br>
+            • Confirmar reasignación<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que el proveedor se cambia correctamente<br>
+                <input type="checkbox"> Verificar que se notifica al nuevo proveedor
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 6: PERMISOS Y RESTRICCIONES</h2>
+
+        <h3>Verificar Permisos por Rol</h3>
+        <div class="step">
+            <span class="step-number">P1</span>
+            <strong>Inspector - Permisos:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Puede crear tareas<br>
+                <input type="checkbox"> Puede editar certificados en estado "Pendiente Certificación Inspector"<br>
+                <input type="checkbox"> Puede aprobar certificados<br>
+                <input type="checkbox"> Puede observar tareas<br>
+                <input type="checkbox"> Puede reasignar proveedores en tareas "Asignada"<br>
+                <input type="checkbox"> NO puede ver tareas de otras regiones<br>
+                <input type="checkbox"> NO puede asignar WO<br>
+                <input type="checkbox"> NO puede aprobar administración/gerencia/CERCO
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">P2</span>
+            <strong>Supervisor - Permisos:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Puede aprobar tareas en "Pendiente Aprobación Supervisor"<br>
+                <input type="checkbox"> Puede editar certificados en estado "Pendiente Certificación Inspector"<br>
+                <input type="checkbox"> Puede observar tareas<br>
+                <input type="checkbox"> Puede reasignar proveedores en tareas "Asignada"<br>
+                <input type="checkbox"> NO puede crear tareas<br>
+                <input type="checkbox"> NO puede asignar WO<br>
+                <input type="checkbox"> NO puede aprobar administración/gerencia/CERCO
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">P3</span>
+            <strong>Administrativo - Permisos:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Puede asignar WO en tareas "Asignada"<br>
+                <input type="checkbox"> Puede aprobar tareas en "Pendiente Aprobación Administración"<br>
+                <input type="checkbox"> Puede exportar materiales<br>
+                <input type="checkbox"> Puede observar tareas<br>
+                <input type="checkbox"> Puede VER todas las tareas de su región<br>
+                <input type="checkbox"> NO puede crear tareas<br>
+                <input type="checkbox"> NO puede editar certificados<br>
+                <input type="checkbox"> NO puede aprobar supervisor/gerencia/CERCO
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">P4</span>
+            <strong>Gerente - Permisos:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Puede aprobar tareas en "Pendiente Aprobación Gerente"<br>
+                <input type="checkbox"> Puede observar tareas<br>
+                <input type="checkbox"> NO puede crear tareas<br>
+                <input type="checkbox"> NO puede asignar WO<br>
+                <input type="checkbox"> NO puede editar certificados<br>
+                <input type="checkbox"> NO puede aprobar supervisor/administración/CERCO
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">P5</span>
+            <strong>CERCO - Permisos:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Puede aprobar tareas en "Pendiente Aprobación CERCO"<br>
+                <input type="checkbox"> Puede observar tareas<br>
+                <input type="checkbox"> Puede ver tareas de TODAS las regiones<br>
+                <input type="checkbox"> NO puede crear tareas<br>
+                <input type="checkbox"> NO puede asignar WO<br>
+                <input type="checkbox"> NO puede editar certificados<br>
+                <input type="checkbox"> NO puede aprobar supervisor/administración/gerencia
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">P6</span>
+            <strong>Proveedor - Permisos:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Puede emitir certificados en tareas "Asignada" con WO<br>
+                <input type="checkbox"> Puede subir archivos adjuntos<br>
+                <input type="checkbox"> Puede resolver observaciones<br>
+                <input type="checkbox"> NO puede crear tareas<br>
+                <input type="checkbox"> NO puede asignar WO<br>
+                <input type="checkbox"> NO puede aprobar tareas<br>
+                <input type="checkbox"> NO puede observar tareas
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 7: ESTADOS FINALIZADOS</h2>
+
+        <h3>Verificar Tareas Finalizadas</h3>
+        <div class="step">
+            <span class="step-number">F1</span>
+            <strong>Completar una tarea hasta "Finalizada - Aprobada":</strong><br>
+            • Seguir todos los pasos del Escenario 1<br>
+            • Verificar que la tarea llega a "Finalizada - Aprobada"<br>
+            <div class="checklist">
+                <input type="checkbox"> Verificar que NO aparece barra de acciones para ningún rol<br>
+                <input type="checkbox"> Verificar que NO se pueden realizar más acciones<br>
+                <input type="checkbox"> Verificar que todos los roles pueden VER la tarea<br>
+                <input type="checkbox"> Verificar que se muestra el estado final correctamente
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 8: DASHBOARDS POR ROL</h2>
+
+        <h3>Verificar Dashboards</h3>
+        <div class="step">
+            <span class="step-number">D1</span>
+            <strong>Dashboard Inspector:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Muestra botón "Crear Nueva Tarea"<br>
+                <input type="checkbox"> Muestra tareas de su región<br>
+                <input type="checkbox"> Agrupa tareas por estados relevantes<br>
+                <input type="checkbox"> Filtros funcionan correctamente
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">D2</span>
+            <strong>Dashboard Administrativo:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Muestra "Pendientes de carga WO"<br>
+                <input type="checkbox"> Muestra "Pendientes de mi aprobación"<br>
+                <input type="checkbox"> Muestra "Tareas generadas (con WO)"<br>
+                <input type="checkbox"> Muestra "Aprobadas por mí"<br>
+                <input type="checkbox"> Filtros específicos funcionan correctamente
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">D3</span>
+            <strong>Dashboard CERCO:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Muestra tareas de TODAS las regiones<br>
+                <input type="checkbox"> Muestra "Pendientes de mi aprobación"<br>
+                <input type="checkbox"> Filtros por región funcionan<br>
+                <input type="checkbox"> Puede ver tareas finalizadas
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 9: CASOS LÍMITE</h2>
+
+        <h3>Casos de Error</h3>
+        <div class="step">
+            <span class="step-number">C1</span>
+            <strong>Intentar acciones no permitidas:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Inspector intenta aprobar administración → Debe fallar<br>
+                <input type="checkbox"> Administrativo intenta crear tarea → Debe fallar<br>
+                <input type="checkbox"> Proveedor intenta aprobar tarea → Debe fallar<br>
+                <input type="checkbox"> Usuario intenta ver tarea de otra región → Debe fallar (excepto CERCO)
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">C2</span>
+            <strong>Estados inconsistentes:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Tarea sin WO no puede ser certificada<br>
+                <input type="checkbox"> Tarea finalizada no permite más acciones<br>
+                <input type="checkbox"> Observaciones requieren respuesta antes de continuar
+            </div>
+        </div>
+
+        <h2>🧪 TESTING COMPLETO - ESCENARIO 10: NAVEGACIÓN Y UX</h2>
+
+        <h3>Experiencia de Usuario</h3>
+        <div class="step">
+            <span class="step-number">U1</span>
+            <strong>Navegación:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Links de navegación funcionan correctamente<br>
+                <input type="checkbox"> Botones de logout funcionan<br>
+                <input type="checkbox"> Breadcrumbs son claros<br>
+                <input type="checkbox"> URLs son amigables
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">U2</span>
+            <strong>Responsive Design:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Funciona en desktop<br>
+                <input type="checkbox"> Funciona en tablet<br>
+                <input type="checkbox"> Funciona en móvil<br>
+                <input type="checkbox"> Formularios son usables en móvil
+            </div>
+        </div>
+
+        <div class="step">
+            <span class="step-number">U3</span>
+            <strong>Mensajes y Feedback:</strong><br>
+            <div class="checklist">
+                <input type="checkbox"> Mensajes de éxito son claros<br>
+                <input type="checkbox"> Mensajes de error son informativos<br>
+                <input type="checkbox"> Confirmaciones previenen errores<br>
+                <input type="checkbox"> Loading states son visibles
+            </div>
+        </div>
+
+        <h2>📊 RESUMEN DE TESTING</h2>
+        <div class="success">
+            <strong>✅ CRITERIOS DE ÉXITO:</strong><br>
+            • Todos los flujos principales funcionan sin errores<br>
+            • Los permisos se respetan correctamente<br>
+            • Las observaciones se manejan apropiadamente<br>
+            • Los estados se actualizan correctamente<br>
+            • La experiencia de usuario es fluida<br>
+            • No hay errores en consola<br>
+            • Los datos se persisten correctamente
+        </div>
+
+        <div class="error">
+            <strong>❌ CRITERIOS DE FALLO:</strong><br>
+            • Errores 500 en el backend<br>
+            • Acciones no permitidas se ejecutan<br>
+            • Estados inconsistentes<br>
+            • Datos no se guardan<br>
+            • Interfaz no responde<br>
+            • Permisos incorrectos
+        </div>
+
+        <h2>📝 NOTAS ADICIONALES</h2>
+        <div class="step">
+            <strong>Para cada prueba:</strong><br>
+            • Anotar el ID de la tarea de prueba<br>
+            • Verificar que los cambios se reflejan en la base de datos<br>
+            • Probar tanto casos exitosos como casos de error<br>
+            • Verificar que los mensajes son apropiados<br>
+            • Documentar cualquier comportamiento inesperado
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ RECORDATORIO:</strong><br>
+            Esta guía cubre todos los escenarios posibles. Si encuentras un comportamiento 
+            no documentado aquí, es importante reportarlo para su corrección.
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; color: #666;">
+            <p><strong>Guía de Testing - Sistema de Gestión de Tareas</strong></p>
+            <p>Fecha: _______________ | Tester: _______________</p>
+        </div>
+    </div>
+</body>
+</html>
