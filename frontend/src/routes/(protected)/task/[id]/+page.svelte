@@ -172,13 +172,15 @@
   
   // Determinar si el AccionTareaPanel debe mostrarse
   $: mostrarAccionTareaPanel = certificado?.tarea && userRol && (
-    // Para inspectores, supervisores, etc. (no administrativos en estado Asignada)
+    // Para inspectores, supervisores, proveedores, etc. (no administrativos en estado Asignada)
     (userRol !== 'administrativo' || certificado.tarea.estado !== 'Asignada') &&
     // Solo si hay acciones disponibles
     (['inspector', 'supervisor de mantenimiento', 'supervisor de disponibilidad', 
-      'supervisor de soporte', 'supervisor de provision', 'gerente', 'cerco'].includes(userRol.toLowerCase()) ||
+      'supervisor de soporte', 'supervisor de provision', 'gerente', 'cerco', 'proveedor'].includes(userRol.toLowerCase()) ||
      (userRol === 'administrativo' && certificado.tarea.estado !== 'Asignada'))
   );
+  
+  
                            
   $: if (certificado?.tarea?.numero_wo) {
     numeroWoEditable = certificado.tarea.numero_wo;
@@ -644,38 +646,41 @@
         <p>{certificado.tarea.direccion}</p>
       </div>
       
-      <!-- Archivos Adjuntos integrados en la información -->
-      <div class="info-item full-width">
-        <strong>📎 Archivos Adjuntos:</strong>
-        {#if certificado.adjuntos && certificado.adjuntos.length > 0}
-          <div class="files-grid">
-            {#each certificado.adjuntos as adjunto}
-              <div class="file-item existing">
-                <div class="file-icon">
-                  {#if adjunto.nombre_archivo.match(/\.(jpe?g|png|gif|webp|svg)$/i)}
-                    🖼️
-                  {:else if adjunto.nombre_archivo.match(/\.pdf$/i)}
-                    📄
-                  {:else if adjunto.nombre_archivo.match(/\.(xlsx?|csv)$/i)}
-                    📊
-                  {:else if adjunto.nombre_archivo.match(/\.docx?$/i)}
-                    📝
-                  {:else}
-                    📎
-                  {/if}
+      <!-- Archivos Adjuntos integrados en la información - Solo si hay certificado emitido -->
+      {#if certificado.mano_de_obra?.length > 0 || 
+           certificado.materialesUtilizados?.length > 0 || 
+           certificado.materialesRecuperados?.length > 0}
+        <div class="info-item full-width">
+          <strong>📎 Archivos Adjuntos:</strong>
+          {#if certificado.adjuntos && certificado.adjuntos.length > 0}
+            <div class="files-grid">
+              {#each certificado.adjuntos as adjunto}
+                <div class="file-item existing">
+                  <div class="file-icon">
+                    {#if adjunto.nombre_archivo.match(/\.(jpe?g|png|gif|webp|svg)$/i)}
+                      🖼️
+                    {:else if adjunto.nombre_archivo.match(/\.pdf$/i)}
+                      📄
+                    {:else if adjunto.nombre_archivo.match(/\.(xlsx?|csv)$/i)}
+                      📊
+                    {:else if adjunto.nombre_archivo.match(/\.docx?$/i)}
+                      📝
+                    {:else}
+                      📎
+                    {/if}
+                  </div>
+                  <div class="file-info">
+                    <div class="file-name">{adjunto.nombre_archivo}</div>
+                  </div>
+                  <a href="http://localhost:3000{adjunto.url_archivo}" download="{adjunto.nombre_archivo}" class="download-btn" title="Descargar archivo" on:click={handleDownload}>
+                    ⬇️
+                  </a>
                 </div>
-                <div class="file-info">
-                  <div class="file-name">{adjunto.nombre_archivo}</div>
-                </div>
-                <a href="http://localhost:3000{adjunto.url_archivo}" download="{adjunto.nombre_archivo}" class="download-btn" title="Descargar archivo" on:click={handleDownload}>
-                  ⬇️
-                </a>
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <p class="no-files">No hay archivos adjuntos para esta tarea.</p>
-        {/if}
+              {/each}
+            </div>
+          {:else}
+            <p class="no-files">No hay archivos adjuntos para esta tarea.</p>
+          {/if}
         
         <!-- Sección de subida de nuevos archivos (solo para proveedores en certificación) -->
         {#if userRol === 'proveedor' && (certificado.tarea.estado === 'Pendiente Certificación Inspector' || certificado.tarea.estado === 'Pendiente Certificación Inspector/Supervisor')}
@@ -737,8 +742,75 @@
           {/if}
           </div>
         {/if}
-      </div>
+        </div>
+      {/if}
     </div>
+
+    <!-- ================================================================= -->
+    <!-- ADJUNTOS DEL INSPECTOR - SOLO SI NO HAY CERTIFICADO EMITIDO -->
+    <!-- ================================================================= -->
+    {#if certificado && certificado.tarea && 
+         !(certificado.mano_de_obra?.length > 0 || 
+           certificado.materialesUtilizados?.length > 0 || 
+           certificado.materialesRecuperados?.length > 0) &&
+         certificado.adjuntos?.length > 0}
+      
+      <div class="inspector-adjuntos-section">
+        <h2>📎 Archivos Adjuntos del Inspector</h2>
+        <p class="adjuntos-description">
+          Archivos adjuntos por el inspector durante la creación de la tarea:
+        </p>
+        
+        <div class="adjuntos-grid">
+          {#each certificado.adjuntos as adjunto}
+            <div class="adjunto-item">
+              <div class="adjunto-preview">
+                {#if adjunto.nombre_archivo.match(/\.(jpe?g|png|gif|webp|svg)$/i)}
+                  <div class="image-preview">
+                    <img 
+                      src="http://localhost:3000{adjunto.url_archivo}" 
+                      alt="{adjunto.nombre_archivo}"
+                      class="preview-image"
+                      loading="lazy"
+                    />
+                    <div class="image-overlay">
+                      <span class="file-type">🖼️ Imagen</span>
+                    </div>
+                  </div>
+                {:else if adjunto.nombre_archivo.match(/\.pdf$/i)}
+                  <div class="file-preview pdf-preview">
+                    <div class="file-icon-large">📄</div>
+                    <span class="file-type">PDF</span>
+                  </div>
+                {:else if adjunto.nombre_archivo.match(/\.(xlsx?|csv)$/i)}
+                  <div class="file-preview excel-preview">
+                    <div class="file-icon-large">📊</div>
+                    <span class="file-type">Excel</span>
+                  </div>
+                {:else if adjunto.nombre_archivo.match(/\.docx?$/i)}
+                  <div class="file-preview word-preview">
+                    <div class="file-icon-large">📝</div>
+                    <span class="file-type">Word</span>
+                  </div>
+                {:else}
+                  <div class="file-preview generic-preview">
+                    <div class="file-icon-large">📎</div>
+                    <span class="file-type">Archivo</span>
+                  </div>
+                {/if}
+              </div>
+              <div class="adjunto-info">
+                <div class="adjunto-name">{adjunto.nombre_archivo}</div>
+                <a href="http://localhost:3000{adjunto.url_archivo}" download="{adjunto.nombre_archivo}" class="download-btn" title="Descargar archivo">
+                  <span>Descargar</span>
+                  <span class="download-icon">⬇️</span>
+                </a>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
     <!-- ================================================================= -->
     <!-- DETALLES DEL CERTIFICADO - SIEMPRE QUE EXISTA UN CERTIFICADO -->
@@ -746,10 +818,7 @@
     {#if certificado && certificado.tarea && 
          (certificado.mano_de_obra?.length > 0 || 
           certificado.materialesUtilizados?.length > 0 || 
-          certificado.materialesRecuperados?.length > 0 || 
-          certificado.adjuntos?.length > 0 ||
-          certificado.tarea.fecha_inicio || 
-          certificado.tarea.fecha_fin)}
+          certificado.materialesRecuperados?.length > 0)}
       
       <div class="certificado-details-section">
         <h2>📋 Detalles del Certificado Emitido</h2>
@@ -2044,6 +2113,29 @@
   .editar-certificado-panel .btn-large {
     padding: 1.2rem 2.5rem;
     font-size: 1.2rem;
+  }
+  
+  /* Estilos para la sección de adjuntos del inspector */
+  .inspector-adjuntos-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 2rem 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #17a2b8;
+  }
+  
+  .inspector-adjuntos-section h2 {
+    color: #333;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  
+  .adjuntos-description {
+    color: #666;
+    margin-bottom: 1.5rem;
+    font-style: italic;
   }
   
   /* Responsive */

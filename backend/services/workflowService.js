@@ -47,11 +47,11 @@ exports.aprobarInspector = async (req, res) => {
     if (requiereAprobacionSupervisor) {
       // Si hay códigos que requieren aprobación supervisor, ir a supervisor
       nuevoEstado = 'Pendiente Aprobación Supervisor';
-      mensaje = 'La tarea pasa a estado: Pendiente Aprobación Supervisor (códigos requieren aprobación supervisor).';
+      mensaje = 'El certificado ha pasado a la siguiente etapa del proceso de aprobación.';
     } else {
       // Si no hay códigos que requieran aprobación supervisor, ir directo a administración
       nuevoEstado = 'Pendiente Aprobación Administración';
-      mensaje = 'La tarea pasa a estado: Pendiente Aprobación Administración (no requiere aprobación supervisor).';
+      mensaje = 'El certificado ha pasado a la siguiente etapa del proceso de aprobación.';
     }
     
     cambiarEstadoTarea(res, id, id_usuario, nuevoEstado, 'Aprobado por Inspector', mensaje);

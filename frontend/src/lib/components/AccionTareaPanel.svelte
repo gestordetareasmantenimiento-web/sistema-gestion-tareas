@@ -110,7 +110,7 @@
     if (rol !== 'proveedor') return false;
     
     // Solo en tareas asignadas con número de WO
-    return esAsignada && tarea.numero_wo;
+    return esAsignada && !!tarea.numero_wo;
   })();
   
   // Determinar el siguiente estado al aprobar
@@ -295,7 +295,7 @@
       </div>
     </div>
     
-  {:else if puedeAprobar || puedeObservar || puedeReasignar || puedeEditarCertificado}
+  {:else if puedeAprobar || puedeObservar || puedeReasignar || puedeEditarCertificado || puedeCertificar}
     <!-- Panel de Acción Principal -->
     <div class="accion-principal">
       <div class="accion-header">
