@@ -27,7 +27,6 @@ module.exports = function(upload) {
   // --- Rutas para una tarea específica ---
   router.get('/:id', tareaController.getTareaById);
   router.get('/:id/certificado', tareaController.getCertificadoByTareaId);
-  router.get('/:id/historial', tareaController.getHistorialTarea);
   
   // Roles que pueden realizar una actualización general (como añadir ICD)
   router.put('/:id', checkRole([ROLES.INSPECTOR, ROLES.SUPERVISOR_MANTENIMIENTO, ROLES.ADMINISTRATIVO]), tareaController.updateTarea);

@@ -22,8 +22,8 @@
   let nuevoProveedor = '';
   let isExporting = false;
   
-  // Determinar si el usuario puede observar (NO en estado Asignada)
-  $: puedeObservar = userRole && !esAsignada && [
+  // Determinar si el usuario puede observar (NO en estado Asignada y NO finalizada)
+  $: puedeObservar = userRole && !esAsignada && !esFinalizada && [
     'inspector', 'supervisor de mantenimiento', 'supervisor de disponibilidad',
     'supervisor de soporte', 'supervisor de provision', 'administrativo', 
     'gerente', 'cerco'
@@ -49,16 +49,17 @@
   $: esPendienteAprobacion = estadoTarea.includes('pendiente aprobación');
   $: esPendienteCertificacion = estadoTarea.includes('pendiente certificación');
   $: esAsignada = estadoTarea === 'asignada';
+  $: esFinalizada = estadoTarea === 'finalizada - aprobada';
   
   // Determinar si el usuario puede reasignar proveedor
-  $: puedeReasignar = esAsignada && userRole && (
+  $: puedeReasignar = esAsignada && !esFinalizada && userRole && (
     userRole.toLowerCase() === 'inspector' || 
     ['supervisor de mantenimiento', 'supervisor de disponibilidad', 'supervisor de soporte', 'supervisor de provision'].includes(userRole.toLowerCase())
   );
   
   // Determinar si el usuario puede aprobar según su rol y el estado
   $: puedeAprobar = (() => {
-    if (!userRole || !tarea) return false;
+    if (!userRole || !tarea || esFinalizada) return false;
     
     const rol = userRole.toLowerCase();
     
@@ -83,7 +84,7 @@
   
   // Determinar si el usuario puede editar certificado (inspectores y supervisores en tareas certificadas)
   $: puedeEditarCertificado = (() => {
-    if (!userRole || !tarea) return false;
+    if (!userRole || !tarea || esFinalizada) return false;
     
     const rol = userRole.toLowerCase();
     
@@ -104,7 +105,7 @@
   
   // Determinar si el usuario puede certificar (proveedores en tareas asignadas con WO)
   $: puedeCertificar = (() => {
-    if (!userRole || !tarea) return false;
+    if (!userRole || !tarea || esFinalizada) return false;
     
     const rol = userRole.toLowerCase();
     

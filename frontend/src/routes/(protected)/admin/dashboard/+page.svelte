@@ -11,7 +11,7 @@
       pendientesDeWo?: any[];
       pendientesDeAprobacion?: any[];
       tareasGeneradas?: any[];
-      aprobadasPorMi?: any[];
+      aprobadasPorAdmin?: any[];
       observados?: any[];
     };
     error?: string;
@@ -24,7 +24,7 @@
     ...(data.columnas?.pendientesDeWo || []),
     ...(data.columnas?.pendientesDeAprobacion || []),
     ...(data.columnas?.tareasGeneradas || []),
-    ...(data.columnas?.aprobadasPorMi || []),
+    ...(data.columnas?.aprobadasPorAdmin || []),
     ...(data.columnas?.observados || [])
   ];
   

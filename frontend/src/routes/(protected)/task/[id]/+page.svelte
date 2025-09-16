@@ -177,8 +177,7 @@
     // Solo si hay acciones disponibles
     (['inspector', 'supervisor de mantenimiento', 'supervisor de disponibilidad', 
       'supervisor de soporte', 'supervisor de provision', 'gerente', 'cerco', 'proveedor'].includes(userRol.toLowerCase()) ||
-     (userRol === 'administrativo' && certificado.tarea.estado !== 'Asignada') ||
-     // Incluir específicamente el estado "Pendiente Aprobación Administración" para administrativos
+     // Para administrativos: solo mostrar panel en "Pendiente Aprobación Administración"
      (userRol === 'administrativo' && certificado.tarea.estado === 'Pendiente Aprobación Administración'))
   );
   

@@ -184,6 +184,8 @@ const getAllTareas = async (req, res) => {
 
 const getTareaById = (req, res) => {
   const { id } = req.params;
+  const { rol } = req.user;
+  
   const sql = `
     SELECT 
       t.*,
@@ -206,6 +208,10 @@ const getTareaById = (req, res) => {
     if (!row) {
       return res.status(404).json({ error: 'Tarea no encontrada.' });
     }
+    
+    // El rol administrativo puede ver todas las tareas de su región, pero solo actuar en estados específicos
+    // Esta restricción se maneja en las funciones de acción específicas
+    
     res.json({ message: "success", data: row });
   });
 };
@@ -392,6 +398,7 @@ const deleteTarea = (req, res) => {
 const getCertificadoByTareaId = async (req, res) => {
   try {
     const { id } = req.params;
+    const { rol } = req.user;
     const id_tarea = id;
     
     const adjuntosPromise = new Promise((resolve, reject) => {
@@ -441,6 +448,9 @@ const getCertificadoByTareaId = async (req, res) => {
     if (!tarea) {
       return res.status(404).json({ error: 'Tarea no encontrada.' });
     }
+
+    // El rol administrativo puede ver certificados de todas las tareas de su región, pero solo actuar en estados específicos
+    // Esta restricción se maneja en las funciones de acción específicas
 
     const certificado = { 
         tarea, 
@@ -1137,6 +1147,7 @@ const editarCertificado = async (req, res) => {
   }
 };
 
+
 module.exports = {
     getAllTareas,
     getTareaById,
@@ -1148,7 +1159,6 @@ module.exports = {
     editarCertificado,
     getAdjuntos,
     addAdjunto,
-    exportarMateriales,
-    getHistorialTarea
+    exportarMateriales
 };
 

@@ -147,6 +147,23 @@ exports.aprobarAdmin = async (req, res) => {
     const { id } = req.params;
     const { id: id_usuario } = req.user;
     
+    // Verificar que la tarea esté en el estado correcto
+    const tarea = await new Promise((resolve, reject) => {
+      const sql = "SELECT estado FROM tareas WHERE id = ?";
+      db.get(sql, [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    if (!tarea) {
+      return res.status(404).json({ error: "Tarea no encontrada." });
+    }
+    
+    if (tarea.estado !== 'Pendiente Aprobación Administración') {
+      return res.status(403).json({ error: "Solo se puede aprobar tareas en estado 'Pendiente Aprobación Administración'." });
+    }
+    
     // Verificar si hay códigos de mano de obra que requieren autorización gerente
     const codigosRequeridos = await new Promise((resolve, reject) => {
       const sql = `
@@ -185,6 +202,23 @@ exports.observarAdmin = async (req, res) => {
     const { observacion } = req.body;
     const { id } = req.params;
     const { id: id_usuario, rol } = req.user;
+    
+    // Verificar que la tarea esté en el estado correcto
+    const tarea = await new Promise((resolve, reject) => {
+      const sql = "SELECT estado FROM tareas WHERE id = ?";
+      db.get(sql, [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    if (!tarea) {
+      return res.status(404).json({ error: "Tarea no encontrada." });
+    }
+    
+    if (tarea.estado !== 'Pendiente Aprobación Administración') {
+      return res.status(403).json({ error: "Solo se puede observar tareas en estado 'Pendiente Aprobación Administración'." });
+    }
     
     const resultado = await observacionService.crearObservacion(
       id, id_usuario, rol, observacion, 'Pendiente Aprobación Administración'
