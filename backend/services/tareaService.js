@@ -548,7 +548,7 @@ const emitirCertificado = async (req, res) => {
       for (const item of materiales_utilizados) {
         await new Promise((resolve, reject) => {
           const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
-          db.run(sql, [id, item.id, item.cantidad, 'utilizado'], function(err) {
+          db.run(sql, [id, item.codigo, item.cantidad, 'utilizado'], function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
           });
@@ -561,7 +561,7 @@ const emitirCertificado = async (req, res) => {
       for (const item of materiales_recuperados) {
         await new Promise((resolve, reject) => {
           const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
-          db.run(sql, [id, item.id, item.cantidad, 'recuperado'], function(err) {
+          db.run(sql, [id, item.codigo, item.cantidad, 'recuperado'], function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
           });
@@ -792,36 +792,21 @@ const editarCertificado = async (req, res) => {
       console.log('🔄 Inspector/Supervisor editando - manteniendo estado actual');
     }
     
-    // Actualizar la tarea con las fechas
-    console.log('🔄 Actualizando tarea...');
+    // Las fechas y estado se actualizarán al final del proceso
+    
+    // Usar transacción para asegurar consistencia de datos
+    console.log('🔄 Iniciando transacción para editar certificado...');
+    
+    // Iniciar transacción
     await new Promise((resolve, reject) => {
-      let sql, params;
-      if (nuevoEstado) {
-        // Proveedor: actualizar fechas y cambiar estado
-        sql = `UPDATE tareas SET fecha_inicio = ?, fecha_fin = ?, estado = ? WHERE id = ?`;
-        params = [fecha_inicio, fecha_fin, nuevoEstado, id];
-      } else {
-        // Inspector/Supervisor: solo actualizar fechas
-        sql = `UPDATE tareas SET fecha_inicio = ?, fecha_fin = ? WHERE id = ?`;
-        params = [fecha_inicio, fecha_fin, id];
-      }
-      
-      db.run(sql, params, function(err) {
-        if (err) {
-          console.error('❌ Error actualizando tarea:', err);
-          reject(err);
-        } else {
-          console.log('✅ Tarea actualizada exitosamente');
-          resolve(this.changes);
-        }
+      db.run('BEGIN TRANSACTION', function(err) {
+        if (err) reject(err);
+        else resolve();
       });
     });
     
-    // Solo eliminar y reinsertar datos si hay cambios
-    console.log('🔍 Verificando si hay cambios en mano de obra y materiales...');
-    
-    // Eliminar mano de obra anterior solo si hay nueva mano de obra
-    if (mano_de_obra && mano_de_obra.length > 0) {
+    try {
+      // Eliminar solo mano de obra anterior (siempre para edición)
       console.log('🗑️ Eliminando mano de obra anterior...');
       await new Promise((resolve, reject) => {
         const sql = `DELETE FROM tarea_mano_de_obra WHERE id_tarea = ?`;
@@ -830,26 +815,92 @@ const editarCertificado = async (req, res) => {
           else resolve(this.changes);
         });
       });
-    } else {
-      console.log('⏭️ No hay mano de obra nueva, manteniendo la anterior');
-    }
-    
-    // Eliminar materiales anteriores solo si hay nuevos materiales
-    if ((materiales_utilizados && materiales_utilizados.length > 0) || 
-        (materiales_recuperados && materiales_recuperados.length > 0)) {
-      console.log('🗑️ Eliminando materiales anteriores...');
-      await new Promise((resolve, reject) => {
-        const sql = `DELETE FROM tarea_materiales WHERE id_tarea = ?`;
-        db.run(sql, [id], function(err) {
-          if (err) reject(err);
-          else resolve(this.changes);
-        });
+      
+      // Para materiales, usar lógica inteligente: actualizar existentes, agregar nuevos, eliminar los que no están
+      console.log('🔄 Procesando materiales con lógica inteligente...');
+      
+      // Obtener materiales actuales de la tarea
+      const materialesActuales = await new Promise((resolve, reject) => {
+        const sql = `SELECT id, id_material, cantidad, tipo FROM tarea_materiales WHERE id_tarea = ?`;
+        db.all(sql, [id], (err, rows) => err ? reject(err) : resolve(rows));
       });
-    } else {
-      console.log('⏭️ No hay materiales nuevos, manteniendo los anteriores');
-    }
-    
-    // NO eliminar archivos adjuntos anteriores - solo agregar nuevos si existen
+      
+      console.log(`📋 Materiales actuales en BD: ${materialesActuales.length}`);
+      
+      // Crear mapas para facilitar la comparación
+      const materialesActualesMap = new Map();
+      materialesActuales.forEach(mat => {
+        const key = `${mat.id_material}_${mat.tipo}`;
+        materialesActualesMap.set(key, mat);
+      });
+      
+      // Procesar materiales del formulario
+      const materialesFormulario = new Map();
+      
+      // Agregar materiales utilizados del formulario
+      if (materiales_utilizados && materiales_utilizados.length > 0) {
+        materiales_utilizados.forEach(item => {
+          const key = `${item.codigo}_utilizado`;
+          materialesFormulario.set(key, { ...item, tipo: 'utilizado' });
+        });
+      }
+      
+      // Agregar materiales recuperados del formulario
+      if (materiales_recuperados && materiales_recuperados.length > 0) {
+        materiales_recuperados.forEach(item => {
+          const key = `${item.codigo}_recuperado`;
+          materialesFormulario.set(key, { ...item, tipo: 'recuperado' });
+        });
+      }
+      
+      console.log(`📋 Materiales en formulario: ${materialesFormulario.size}`);
+      
+      // 1. Eliminar materiales que ya no están en el formulario
+      for (const [key, materialActual] of materialesActualesMap) {
+        if (!materialesFormulario.has(key)) {
+          console.log(`🗑️ Eliminando material: ${key} (ID: ${materialActual.id})`);
+          await new Promise((resolve, reject) => {
+            const sql = `DELETE FROM tarea_materiales WHERE id = ?`;
+            db.run(sql, [materialActual.id], function(err) {
+              if (err) reject(err);
+              else resolve(this.changes);
+            });
+          });
+        }
+      }
+      
+      // 2. Actualizar o insertar materiales del formulario
+      for (const [key, materialFormulario] of materialesFormulario) {
+        const materialActual = materialesActualesMap.get(key);
+        
+        if (materialActual) {
+          // Material existe: actualizar cantidad si es diferente
+          if (materialActual.cantidad !== materialFormulario.cantidad) {
+            console.log(`🔄 Actualizando cantidad de material: ${key} (ID: ${materialActual.id}) de ${materialActual.cantidad} a ${materialFormulario.cantidad}`);
+            await new Promise((resolve, reject) => {
+              const sql = `UPDATE tarea_materiales SET cantidad = ? WHERE id = ?`;
+              db.run(sql, [materialFormulario.cantidad, materialActual.id], function(err) {
+                if (err) reject(err);
+                else resolve(this.changes);
+              });
+            });
+          } else {
+            console.log(`✅ Material sin cambios: ${key} (ID: ${materialActual.id})`);
+          }
+        } else {
+          // Material nuevo: insertar
+          console.log(`➕ Insertando nuevo material: ${key}`);
+          await new Promise((resolve, reject) => {
+            const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
+            db.run(sql, [id, materialFormulario.codigo, materialFormulario.cantidad, materialFormulario.tipo], function(err) {
+              if (err) reject(err);
+              else resolve(this.lastID);
+            });
+          });
+        }
+      }
+      
+      // NO eliminar archivos adjuntos anteriores - solo agregar nuevos si existen
     
     // Procesar mano de obra con cálculo automático del costo mínimo diario
     let manoDeObraProcesada = mano_de_obra || [];
@@ -910,41 +961,7 @@ const editarCertificado = async (req, res) => {
       console.log('🔧 No hay mano de obra para guardar');
     }
     
-    // Guardar materiales utilizados
-    if (materiales_utilizados && materiales_utilizados.length > 0) {
-      console.log(`📦 Guardando ${materiales_utilizados.length} materiales utilizados...`);
-      for (const item of materiales_utilizados) {
-        console.log(`✅ Guardando material utilizado: ${item.codigo || 'Sin código'} - ${item.descripcion || 'Sin descripción'}`);
-        await new Promise((resolve, reject) => {
-          const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
-          db.run(sql, [id, item.id, item.cantidad, 'utilizado'], function(err) {
-            if (err) reject(err);
-            else resolve(this.lastID);
-          });
-        });
-      }
-      console.log('✅ Materiales utilizados guardados exitosamente');
-    } else {
-      console.log('📦 No hay materiales utilizados para guardar');
-    }
-    
-    // Guardar materiales recuperados
-    if (materiales_recuperados && materiales_recuperados.length > 0) {
-      console.log(`📦 Guardando ${materiales_recuperados.length} materiales recuperados...`);
-      for (const item of materiales_recuperados) {
-        console.log(`✅ Guardando material recuperado: ${item.codigo || 'Sin código'} - ${item.descripcion || 'Sin descripción'}`);
-        await new Promise((resolve, reject) => {
-          const sql = `INSERT INTO tarea_materiales (id_tarea, id_material, cantidad, tipo) VALUES (?, ?, ?, ?)`;
-          db.run(sql, [id, item.id, item.cantidad, 'recuperado'], function(err) {
-            if (err) reject(err);
-            else resolve(this.lastID);
-          });
-        });
-      }
-      console.log('✅ Materiales recuperados guardados exitosamente');
-    } else {
-      console.log('📦 No hay materiales recuperados para guardar');
-    }
+    // Los materiales ya fueron procesados con lógica inteligente arriba
     
     // Procesar archivos adjuntos si existen (se agregaron nuevos archivos)
     if (req.files && req.files.length > 0) {
@@ -963,6 +980,24 @@ const editarCertificado = async (req, res) => {
       console.log('📎 No hay archivos nuevos para agregar');
     }
     
+    // Actualizar estado de la tarea si es necesario
+    console.log('🔄 Actualizando estado de la tarea...');
+    let nuevoEstado = tarea.estado; // Por defecto, mantener el estado actual
+    
+    if (rolUsuario === 'proveedor') {
+      nuevoEstado = 'Pendiente Certificación Inspector/Supervisor';
+    }
+    
+    // Actualizar el estado en la base de datos
+    await new Promise((resolve, reject) => {
+      const sql = `UPDATE tareas SET estado = ?, fecha_inicio = ?, fecha_fin = ? WHERE id = ?`;
+      db.run(sql, [nuevoEstado, fecha_inicio, fecha_fin, id], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      });
+    });
+    console.log(`✅ Estado de tarea actualizado a: ${nuevoEstado}`);
+    
     // Registrar en el historial
     console.log('📝 Registrando en historial...');
     try {
@@ -975,11 +1010,20 @@ const editarCertificado = async (req, res) => {
       } else {
         mensajeHistorial = `Certificado editado por ${rolUsuario}. Estado de la tarea se mantiene.`;
         mensajeRespuesta = 'Certificado editado exitosamente. Los cambios se han guardado.';
-        estadoRespuesta = tarea.estado; // Mantener el estado actual
+        estadoRespuesta = nuevoEstado;
       }
       
       await historialService.registrar(id, id_usuario, 'Certificado Editado', mensajeHistorial);
       console.log('✅ Historial registrado exitosamente');
+      
+      // Commit de la transacción
+      await new Promise((resolve, reject) => {
+        db.run('COMMIT', function(err) {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      console.log('✅ Transacción confirmada exitosamente');
       
       console.log('📤 Enviando respuesta exitosa...');
       res.json({ 
@@ -1003,6 +1047,23 @@ const editarCertificado = async (req, res) => {
           fecha_fin
         }
       });
+    }
+    
+    } catch (transactionError) {
+      // Rollback de la transacción en caso de error
+      console.error('❌ Error en transacción, haciendo rollback:', transactionError);
+      await new Promise((resolve, reject) => {
+        db.run('ROLLBACK', function(err) {
+          if (err) {
+            console.error('❌ Error al hacer rollback:', err);
+            reject(err);
+          } else {
+            console.log('✅ Rollback completado');
+            resolve();
+          }
+        });
+      });
+      throw transactionError; // Re-lanzar el error para que sea manejado por el catch principal
     }
     
   } catch (error) {
