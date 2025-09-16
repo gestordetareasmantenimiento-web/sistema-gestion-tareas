@@ -7,6 +7,7 @@ interface User {
   id: number;
   rol: string;
   id_proveedor: number | null;
+  email?: string;
 }
 
 // Creamos un "store" escribible, que empieza como null si no hay sesión
@@ -20,16 +21,28 @@ export function syncAuth() {
       try {
         // Decodificamos la parte del payload del JWT (no verificamos firma aquí)
         const payload = JSON.parse(atob(token.split('.')[1]));
+        
+        // Verificar si el token ha expirado
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < now) {
+          localStorage.removeItem('authToken');
+          user.set(null);
+          return;
+        }
+        
         user.set({
           id: payload.id,
           rol: payload.rol,
-          id_proveedor: payload.id_proveedor
+          id_proveedor: payload.id_proveedor,
+          email: payload.email
         });
       } catch (e) {
         // Si el token es inválido, lo borramos
         localStorage.removeItem('authToken');
         user.set(null);
       }
+    } else {
+      user.set(null);
     }
   }
 }

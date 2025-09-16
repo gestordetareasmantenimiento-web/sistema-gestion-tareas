@@ -14,6 +14,15 @@
 
   onMount(() => {
     syncAuth();
+    
+    // Verificar autenticación cada 30 segundos
+    const interval = setInterval(() => {
+      syncAuth();
+    }, 30000);
+    
+    return () => {
+      clearInterval(interval);
+    };
   });
 
   function handleLogout() {
@@ -46,7 +55,7 @@
     </div>
     {#if $user}
       <div class="nav-right">
-        <span class="user-email">{$user.email}</span>
+        <span class="user-email">{$user.email || `Usuario ID: ${$user.id}`}</span>
         <button on:click={handleLogout} class="logout-button">Cerrar Sesión</button>
       </div>
     {/if}

@@ -37,7 +37,7 @@
   let validacionCostoMinimo: any = null;
   let isLoadingValidacion = false;
   
-  // Archivos
+  // Archivos - IMPLEMENTACIÓN QUE FUNCIONA (copiada de CreateTaskForm)
   let archivos: FileList | null = null;
   let archivosPreview: { name: string; type: string; size: number; previewUrl?: string }[] = [];
   
@@ -281,17 +281,30 @@
     }
   }
   
-  // Manejo de archivos
+  // Manejo de archivos - VERSIÓN FORZADA CON ALERT
   function handleFileChange(event: Event) {
     const target = event.target as HTMLInputElement;
     if (target.files) {
-      archivos = target.files;
-      archivosPreview = Array.from(target.files).map(file => ({
+      
+      // Acumular archivos en lugar de reemplazar
+      const newFiles = Array.from(target.files);
+      const existingFiles = archivos ? Array.from(archivos) : [];
+      const allFiles = [...existingFiles, ...newFiles];
+      
+      
+      // Crear nuevo FileList
+      const dt = new DataTransfer();
+      allFiles.forEach(file => dt.items.add(file));
+      archivos = dt.files;
+      
+      // Actualizar preview
+      archivosPreview = Array.from(archivos).map(file => ({
         name: file.name,
         type: getFileType(file.name),
         size: file.size,
         previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
       }));
+      
     }
   }
   
@@ -304,6 +317,7 @@
   }
   
   function removeFile(index: number) {
+    
     if (archivos) {
       const dt = new DataTransfer();
       Array.from(archivos).forEach((file, i) => {
@@ -312,6 +326,7 @@
       archivos = dt.files;
       archivosPreview = archivosPreview.filter((_, i) => i !== index);
     }
+    
   }
   
   // Envío del certificado
@@ -1104,14 +1119,16 @@
     display: flex;
     flex-direction: column;
     min-height: auto;
+    max-height: 100vh;
   }
   
   .form-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 1.5rem 2rem;
+    padding: 1rem 1.5rem;
     width: 100%;
     box-sizing: border-box;
+    flex-shrink: 0;
   }
   
   .header-top {
@@ -1165,14 +1182,15 @@
   .step {
     display: flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.4rem 0.6rem;
+    gap: 0.2rem;
+    padding: 0.3rem 0.4rem;
     background: rgba(255,255,255,0.1);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s ease;
     flex: 1;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    min-width: 0;
   }
   
   .step:hover {
@@ -1198,19 +1216,26 @@
   
   .step-title {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .step-description {
-    font-size: 0.75rem;
+    font-size: 0.6rem;
     opacity: 0.8;
+    display: none; /* Ocultar descripción para ahorrar espacio */
   }
   
   .form-content {
-    padding: 1.5rem 2rem;
+    padding: 1rem 1.5rem;
     width: 100%;
     box-sizing: border-box;
     background: white;
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
   }
   
   .step-content h3 {
@@ -1297,16 +1322,19 @@
   .selection-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    margin-top: 2rem;
-    min-height: 70vh;
+    gap: 2rem;
+    margin-top: 1rem;
+    min-height: 50vh;
+    max-height: 60vh;
   }
   
   .available-items, .selected-items {
     background: #f8f9fa;
     border-radius: 12px;
-    padding: 2rem;
-    min-height: 70vh;
+    padding: 1.5rem;
+    min-height: 50vh;
+    max-height: 60vh;
+    overflow-y: auto;
   }
   
   .section-header {

@@ -90,7 +90,8 @@ app.post('/api/login', (req, res) => {
       id: user.id, 
       rol: user.rol.toLowerCase(),
       id_proveedor: user.id_proveedor,
-      region: user.region
+      region: user.region,
+      email: user.email
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });

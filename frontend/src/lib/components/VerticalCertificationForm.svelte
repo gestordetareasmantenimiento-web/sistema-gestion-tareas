@@ -573,8 +573,18 @@
   function handleFileChange(event: Event) {
     const target = event.target as HTMLInputElement;
     if (target.files) {
-      archivos = target.files;
-      archivosPreview = Array.from(target.files).map(file => ({
+      // Acumular archivos en lugar de reemplazar
+      const newFiles = Array.from(target.files);
+      const existingFiles = archivos ? Array.from(archivos) : [];
+      const allFiles = [...existingFiles, ...newFiles];
+      
+      // Crear nuevo FileList
+      const dt = new DataTransfer();
+      allFiles.forEach(file => dt.items.add(file));
+      archivos = dt.files;
+      
+      // Actualizar preview
+      archivosPreview = Array.from(archivos).map(file => ({
         name: file.name,
         type: file.type.startsWith('image/') ? 'image' : 
               file.type === 'application/pdf' ? 'pdf' :
@@ -587,9 +597,13 @@
   }
   
   function removeFile(index: number) {
-    archivosPreview = archivosPreview.filter((_, i) => i !== index);
-    if (archivosPreview.length === 0) {
-      archivos = null;
+    if (archivos) {
+      const dt = new DataTransfer();
+      Array.from(archivos).forEach((file, i) => {
+        if (i !== index) dt.items.add(file);
+      });
+      archivos = dt.files;
+      archivosPreview = archivosPreview.filter((_, i) => i !== index);
     }
   }
 
