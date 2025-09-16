@@ -142,9 +142,43 @@ exports.aprobarSupervisor = async (req, res) => {
 exports.rechazarSupervisor = (req, res) => {
   cambiarEstadoTarea(res, req.params.id, req.user.id, 'Pendiente Certificación Inspector/Supervisor', 'Observado por Supervisor', `La tarea vuelve al inspector. Observación: ${req.body.observacion}`);
 };
-exports.aprobarAdmin = (req, res) => {
-  const nuevo_estado = 'Pendiente Aprobación Gerente';
-  cambiarEstadoTarea(res, req.params.id, req.user.id, nuevo_estado, 'Aprobado por Administración', `La tarea pasa a estado: ${nuevo_estado}.`);
+exports.aprobarAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id: id_usuario } = req.user;
+    
+    // Verificar si hay códigos de mano de obra que requieren autorización gerente
+    const codigosRequeridos = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT DISTINCT mo.requiere_aprobacion_gerente
+        FROM tarea_mano_de_obra tmo
+        JOIN mano_de_obra mo ON tmo.id_mano_de_obra = mo.id
+        WHERE tmo.id_tarea = ?
+      `;
+      db.all(sql, [id], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    // Verificar si algún código requiere autorización gerente
+    const requiereAutorizacionGerente = codigosRequeridos.some(codigo => codigo.requiere_aprobacion_gerente === 1);
+    
+    let nuevoEstado, mensaje;
+    
+    if (requiereAutorizacionGerente) {
+      nuevoEstado = 'Pendiente Aprobación Gerente';
+      mensaje = 'La tarea ha pasado a la siguiente etapa del proceso de aprobación.';
+    } else {
+      nuevoEstado = 'Pendiente Aprobación CERCO';
+      mensaje = 'La tarea ha pasado a la siguiente etapa del proceso de aprobación.';
+    }
+    
+    cambiarEstadoTarea(res, id, id_usuario, nuevoEstado, 'Aprobado por Administración', mensaje);
+  } catch (error) {
+    console.error('Error al aprobar administración:', error);
+    res.status(500).json({ error: 'Error interno del servidor al procesar la aprobación' });
+  }
 };
 exports.observarAdmin = async (req, res) => {
   try {

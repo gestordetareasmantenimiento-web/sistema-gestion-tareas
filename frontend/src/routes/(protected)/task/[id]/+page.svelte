@@ -177,7 +177,9 @@
     // Solo si hay acciones disponibles
     (['inspector', 'supervisor de mantenimiento', 'supervisor de disponibilidad', 
       'supervisor de soporte', 'supervisor de provision', 'gerente', 'cerco', 'proveedor'].includes(userRol.toLowerCase()) ||
-     (userRol === 'administrativo' && certificado.tarea.estado !== 'Asignada'))
+     (userRol === 'administrativo' && certificado.tarea.estado !== 'Asignada') ||
+     // Incluir específicamente el estado "Pendiente Aprobación Administración" para administrativos
+     (userRol === 'administrativo' && certificado.tarea.estado === 'Pendiente Aprobación Administración'))
   );
   
   
@@ -381,7 +383,22 @@
     isLoadingObservacion = true;
     try {
       const token = localStorage.getItem('authToken');
-      const actionUrl = `aprobar-${userRol}`;
+      
+      // Mapear roles del frontend a nombres de endpoint del backend
+      const roleMapping: { [key: string]: string } = {
+        'administrativo': 'admin',
+        'gerente': 'gerente',
+        'cerco': 'cerco',
+        'inspector': 'inspector',
+        'supervisor de mantenimiento': 'supervisor',
+        'supervisor de disponibilidad': 'supervisor',
+        'supervisor de soporte': 'supervisor',
+        'supervisor de provision': 'supervisor'
+      };
+      
+      const currentUserRole = userRol || '';
+      const endpointRole = roleMapping[currentUserRole] || currentUserRole;
+      const actionUrl = `aprobar-${endpointRole}`;
       const response = await fetch(`http://localhost:3000/api/tareas/${tareaId}/${actionUrl}`, {
         method: 'PUT',
         headers: {
@@ -1075,6 +1092,7 @@
       {#if mostrarAccionTareaPanel}
         <AccionTareaPanel 
           tarea={certificado.tarea}
+          certificado={certificado}
           userRole={userRol || ''}
           {infoObservacion}
           isLoading={isLoadingObservacion}

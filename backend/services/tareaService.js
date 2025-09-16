@@ -653,19 +653,45 @@ const addAdjunto = async (req, res) => {
   }
 };
 
+const XLSX = require('xlsx');
+
 const exportarMateriales = async (req, res) => {
   try {
     const { id } = req.params;
     const id_tarea = id;
     const id_usuario = req.user.id;
+    
+    // Verificar que la tarea esté en estado "Pendiente Aprobación Administración"
+    const tarea = await new Promise((resolve, reject) => {
+      const sql = `SELECT estado FROM tareas WHERE id = ?`;
+      db.get(sql, [id_tarea], (err, row) => err ? reject(err) : resolve(row));
+    });
+    
+    if (!tarea) {
+      return res.status(404).json({ error: 'Tarea no encontrada.' });
+    }
+    
+    if (tarea.estado !== 'Pendiente Aprobación Administración') {
+      return res.status(403).json({ error: 'Solo se puede exportar materiales de tareas en estado "Pendiente Aprobación Administración".' });
+    }
   const materialesPromise = new Promise((resolve, reject) => {
     const sql = `
-      SELECT m.codigo, m.descripcion, tm.cantidad, tm.tipo
+      SELECT m.codigo, m.descripcion, m.unidad_medida, tm.cantidad, tm.tipo
       FROM tarea_materiales tm
-      JOIN materiales m ON tm.id_material = m.id
+      JOIN materiales m ON tm.id_material = m.codigo
       WHERE tm.id_tarea = ?`;
     db.all(sql, [id_tarea], (err, rows) => err ? reject(err) : resolve(rows));
   });
+  
+  const manoDeObraPromise = new Promise((resolve, reject) => {
+    const sql = `
+      SELECT mo.codigo, mo.descripcion, mo.unidad_medida, mo.precio, tmo.cantidad, tmo.precio_calculado
+      FROM tarea_mano_de_obra tmo
+      JOIN mano_de_obra mo ON tmo.id_mano_de_obra = mo.id
+      WHERE tmo.id_tarea = ?`;
+    db.all(sql, [id_tarea], (err, rows) => err ? reject(err) : resolve(rows));
+  });
+  
   const proveedorInfoPromise = new Promise((resolve, reject) => {
     const sql = `
       SELECT p.centro, p.almacen 
@@ -675,36 +701,75 @@ const exportarMateriales = async (req, res) => {
     db.get(sql, [id_tarea], (err, row) => err ? reject(err) : resolve(row));
   });
 
-  const [materiales, proveedorInfo] = await Promise.all([materialesPromise, proveedorInfoPromise]);
+  const [materiales, manoDeObra, proveedorInfo] = await Promise.all([materialesPromise, manoDeObraPromise, proveedorInfoPromise]);
     
   const dataParaExportar = {
+      mano_de_obra: manoDeObra.map(mo => ({
+          Codigo: mo.codigo,
+          Descripcion: mo.descripcion,
+          Cantidad: mo.cantidad,
+          Unidad_Medida: mo.unidad_medida
+      })),
       utilizados: materiales
           .filter(m => m.tipo === 'utilizado')
           .map(m => ({ 
               Codigo: m.codigo, 
               Descripcion: m.descripcion, 
-              Cantidad: m.cantidad, 
-              Centro: proveedorInfo.centro, 
-              Almacen: proveedorInfo.almacen 
+              Cantidad: m.cantidad,
+              Unidad_Medida: m.unidad_medida,
+              Centro: proveedorInfo?.centro || 'N/A', 
+              Almacen: proveedorInfo?.almacen || 'N/A' 
           })),
       recuperados: materiales
           .filter(m => m.tipo === 'recuperado')
           .map(m => ({ 
               Codigo: m.codigo, 
               Descripcion: m.descripcion, 
-              Cantidad: m.cantidad, 
-              Centro: proveedorInfo.centro, 
-              Almacen: proveedorInfo.almacen 
+              Cantidad: m.cantidad,
+              Unidad_Medida: m.unidad_medida,
+              Centro: proveedorInfo?.centro || 'N/A', 
+              Almacen: proveedorInfo?.almacen || 'N/A' 
           }))
   };
     
+  // Crear un nuevo workbook
+  const workbook = XLSX.utils.book_new();
+  
+  // Crear hojas para cada tipo de datos
+  if (dataParaExportar.mano_de_obra.length > 0) {
+    const manoDeObraSheet = XLSX.utils.json_to_sheet(dataParaExportar.mano_de_obra);
+    XLSX.utils.book_append_sheet(workbook, manoDeObraSheet, 'Mano de Obra');
+  }
+  
+  if (dataParaExportar.utilizados.length > 0) {
+    const utilizadosSheet = XLSX.utils.json_to_sheet(dataParaExportar.utilizados);
+    XLSX.utils.book_append_sheet(workbook, utilizadosSheet, 'Materiales Utilizados');
+  }
+  
+  if (dataParaExportar.recuperados.length > 0) {
+    const recuperadosSheet = XLSX.utils.json_to_sheet(dataParaExportar.recuperados);
+    XLSX.utils.book_append_sheet(workbook, recuperadosSheet, 'Materiales Recuperados');
+  }
+  
+  // Generar el buffer del archivo Excel
+  const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  
+  // Actualizar fecha de exportación
   await new Promise((resolve, reject) => {
     const sql = `UPDATE tareas SET fecha_ultima_exportacion = CURRENT_TIMESTAMP WHERE id = ?`;
     db.run(sql, [id_tarea], (err) => err ? reject(err) : resolve());
   });
+  
+  // Registrar en historial
   await historialService.registrar(id_tarea, id_usuario, 'Exportación de Materiales', 'El usuario ha exportado la lista de materiales a Excel.');
 
-  res.json({ message: "success", data: dataParaExportar });
+  // Configurar headers para descarga
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="tarea-${id_tarea}-materiales.xlsx"`);
+  res.setHeader('Content-Length', excelBuffer.length);
+  
+  // Enviar el archivo
+  res.send(excelBuffer);
   
   } catch (error) {
     console.error('Error al exportar materiales:', error);

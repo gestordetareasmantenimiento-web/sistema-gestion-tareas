@@ -3,6 +3,7 @@
   import { showConfirm, showSuccess, showError } from '../services/modalService';
   
   export let tarea: any;
+  export let certificado: any = null;
   export let userRole: string;
   export let infoObservacion: any = null;
   export let isLoading = false;
@@ -19,6 +20,7 @@
   let showFinalizarForm = false;
   let showReassignForm = false;
   let nuevoProveedor = '';
+  let isExporting = false;
   
   // Determinar si el usuario puede observar (NO en estado Asignada)
   $: puedeObservar = userRole && !esAsignada && [
@@ -235,6 +237,54 @@
     window.location.href = `/task/${tarea.id}/close`;
   }
   
+  async function handleExportarExcel() {
+    if (isExporting) return;
+    
+    isExporting = true;
+    
+    // Timeout de seguridad para resetear el estado después de 10 segundos
+    const timeoutId = setTimeout(() => {
+      isExporting = false;
+    }, 10000);
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:3000/api/tareas/${tarea.id}/exportar-materiales`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al exportar los datos');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tarea-${tarea.id_tarea_texto}-materiales.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      // Pequeño delay para que el usuario vea el estado "Exportando..."
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mostrar mensaje de éxito sin bloquear
+      showSuccess('Éxito', 'Información de Mano de Obra y Materiales exportada exitosamente');
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      showError('Error', 'No se pudo exportar el archivo Excel');
+    } finally {
+      clearTimeout(timeoutId);
+      isExporting = false;
+    }
+  }
+  
   function cancelarFormulario() {
     observacion = '';
     correccion = '';
@@ -325,6 +375,17 @@
             disabled={isLoading}
           >
             🚨 Observar
+          </button>
+        {/if}
+        
+        <!-- Botón de exportación a Excel - solo para rol administrativo en estado Pendiente Aprobación Administración -->
+        {#if userRole?.toLowerCase() === 'administrativo' && tarea.estado === 'Pendiente Aprobación Administración' && certificado && (certificado.mano_de_obra?.length > 0 || certificado.materialesUtilizados?.length > 0 || certificado.materialesRecuperados?.length > 0)}
+          <button 
+            class="btn btn-excel btn-large" 
+            on:click={handleExportarExcel}
+            disabled={isLoading || isExporting}
+          >
+            {isExporting ? '⏳ Exportando...' : '📊 Exportar Información MO y MAT'}
           </button>
         {/if}
         
@@ -759,6 +820,17 @@
     background: #5a32a3;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(111, 66, 193, 0.3);
+  }
+  
+  .btn-excel {
+    background: #217346;
+    color: white;
+  }
+  
+  .btn-excel:hover:not(:disabled) {
+    background: #1e6b3f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(33, 115, 70, 0.3);
   }
   
   /* Responsive */

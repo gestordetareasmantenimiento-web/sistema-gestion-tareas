@@ -230,9 +230,6 @@
                   {#if tarea.inspector_nombre}
                     <div class="inspector-info">
                       <div class="inspector-name">{tarea.inspector_nombre}</div>
-                      {#if tarea.supervisor_nombre && (tarea.estado === 'Pendiente Aprobación Supervisor' || tarea.estado === 'Pendiente Aprobación Administración' || tarea.estado === 'Pendiente Aprobación Gerente' || tarea.estado === 'Pendiente Aprobación CERCO' || tarea.estado === 'Finalizada - Aprobada')}
-                        <div class="supervisor-auth">✓ Autorizado por {tarea.supervisor_nombre}</div>
-                      {/if}
                     </div>
                   {:else}
                     N/A
@@ -255,9 +252,6 @@
                   {#if tarea.inspector_nombre}
                     <div class="inspector-info">
                       <div class="inspector-name">{tarea.inspector_nombre}</div>
-                      {#if tarea.supervisor_nombre && (tarea.estado === 'Pendiente Aprobación Supervisor' || tarea.estado === 'Pendiente Aprobación Administración' || tarea.estado === 'Pendiente Aprobación Gerente' || tarea.estado === 'Pendiente Aprobación CERCO' || tarea.estado === 'Finalizada - Aprobada')}
-                        <div class="supervisor-auth">✓ Autorizado por {tarea.supervisor_nombre}</div>
-                      {/if}
                     </div>
                   {:else}
                     N/A
