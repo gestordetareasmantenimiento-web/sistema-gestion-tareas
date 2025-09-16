@@ -528,7 +528,8 @@
         // Limpiar archivos seleccionados
         archivoParaSubir = null;
         archivosPreview = [];
-        invalidateAll();
+        // Recargar la página para refrescar los datos
+        window.location.reload();
       } else {
         const errorData = await response.json();
         await showError('Error', `Error al subir los archivos: ${errorData.error || 'Error desconocido'}`);

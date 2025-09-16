@@ -146,12 +146,6 @@
       
       console.log(`Redirigiendo a dashboard para rol ${userRole}: ${dashboardPath}`);
       goto(dashboardPath);
-      
-      // Recargar la página después de un breve delay para asegurar que la navegación se complete
-      setTimeout(() => {
-        console.log('🔄 Recargando página para actualizar datos...');
-        window.location.reload();
-      }, 500);
     }, 2000);
   }
   
