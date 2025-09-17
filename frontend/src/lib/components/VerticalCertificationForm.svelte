@@ -329,7 +329,13 @@
       // Cargar cantidades usando el id (que es el codigo)
       certificadoData.mano_de_obra.forEach((item: any) => {
         cantidadesManoDeObra[item.codigo] = item.cantidad || 0;
+        console.log('🔍 Cargando cantidad para código:', {
+          codigo: item.codigo,
+          cantidad: item.cantidad || 0
+        });
       });
+      
+      console.log('🔍 Cantidades de mano de obra cargadas:', cantidadesManoDeObra);
     }
     
     // Cargar materiales utilizados
@@ -610,7 +616,14 @@
   function toggleCodigoManoDeObra(codigo: any) {
     const identifier = codigo.id || codigo.codigo;
     const index = codigosManoDeObraSeleccionados.findIndex(c => (c.id || c.codigo) === identifier);
+    
     if (index > -1) {
+      // Verificar si ya tiene cantidad cargada (no se puede deseleccionar)
+      if (isCodigoConCantidad(codigo)) {
+        console.log('⚠️ No se puede deseleccionar código con cantidad cargada:', codigo.codigo);
+        return; // No permitir deseleccionar
+      }
+      
       codigosManoDeObraSeleccionados = codigosManoDeObraSeleccionados.filter(c => (c.id || c.codigo) !== identifier);
       // Remover cantidad si existe
       delete cantidadesManoDeObra[identifier];
@@ -657,6 +670,26 @@
 
   function isCodigoSeleccionado(codigo: any) {
     return codigosManoDeObraSeleccionados.some(c => c.codigo === codigo.codigo);
+  }
+  
+  // Función para verificar si un código ya tiene cantidad cargada (no se puede deseleccionar)
+  function isCodigoConCantidad(codigo: any) {
+    // Siempre usar codigo.codigo como identificador (string)
+    const identifier = codigo.codigo;
+    const cantidad = cantidadesManoDeObra[identifier];
+    const hasCantidad = cantidad !== undefined && cantidad > 0;
+    
+    // Debug log más detallado
+    console.log('🔍 Verificando código:', {
+      codigo: codigo.codigo,
+      codigoId: codigo.id,
+      identifier,
+      cantidad,
+      hasCantidad,
+      cantidadesManoDeObra: Object.keys(cantidadesManoDeObra)
+    });
+    
+    return hasCantidad;
   }
   
   // Funciones para manejar favoritos
@@ -734,6 +767,12 @@
     const index = codigosMaterialesUtilizados.findIndex(m => m.codigo === identifier);
     
     if (index > -1) {
+      // Verificar si ya tiene cantidad cargada (no se puede deseleccionar)
+      if (isMaterialUtilizadoConCantidad(material)) {
+        console.log('⚠️ No se puede deseleccionar material con cantidad cargada:', material.codigo);
+        return; // No permitir deseleccionar
+      }
+      
       codigosMaterialesUtilizados = codigosMaterialesUtilizados.filter(m => m.codigo !== identifier);
       delete cantidadesMaterialesUtilizados[identifier];
     } else {
@@ -750,6 +789,12 @@
     const index = codigosMaterialesRecuperados.findIndex(m => m.codigo === identifier);
     
     if (index > -1) {
+      // Verificar si ya tiene cantidad cargada (no se puede deseleccionar)
+      if (isMaterialRecuperadoConCantidad(material)) {
+        console.log('⚠️ No se puede deseleccionar material recuperado con cantidad cargada:', material.codigo);
+        return; // No permitir deseleccionar
+      }
+      
       codigosMaterialesRecuperados = codigosMaterialesRecuperados.filter(m => m.codigo !== identifier);
       delete cantidadesMaterialesRecuperados[identifier];
     } else {
@@ -804,6 +849,40 @@
   
   function isMaterialRecuperadoSeleccionado(material: any) {
     return codigosMaterialesRecuperados.some(m => m.codigo === material.codigo);
+  }
+  
+  // Función para verificar si un material utilizado ya tiene cantidad cargada (no se puede deseleccionar)
+  function isMaterialUtilizadoConCantidad(material: any) {
+    const cantidad = cantidadesMaterialesUtilizados[material.codigo];
+    const hasCantidad = cantidad !== undefined && cantidad > 0;
+    
+    // Debug log
+    if (hasCantidad) {
+      console.log('🔍 Material utilizado con cantidad detectado:', {
+        codigo: material.codigo,
+        cantidad,
+        hasCantidad
+      });
+    }
+    
+    return hasCantidad;
+  }
+  
+  // Función para verificar si un material recuperado ya tiene cantidad cargada (no se puede deseleccionar)
+  function isMaterialRecuperadoConCantidad(material: any) {
+    const cantidad = cantidadesMaterialesRecuperados[material.codigo];
+    const hasCantidad = cantidad !== undefined && cantidad > 0;
+    
+    // Debug log
+    if (hasCantidad) {
+      console.log('🔍 Material recuperado con cantidad detectado:', {
+        codigo: material.codigo,
+        cantidad,
+        hasCantidad
+      });
+    }
+    
+    return hasCantidad;
   }
   
   // Función para cargar precios actuales
@@ -1306,9 +1385,12 @@
                     <button 
                       class="select-btn" 
                       class:selected={isCodigoSeleccionado(item)}
+                      class:disabled={isCodigoConCantidad(item)}
+                      disabled={isCodigoConCantidad(item)}
                       on:click={() => toggleCodigoManoDeObra(item)}
+                      title={isCodigoConCantidad(item) ? 'Mano de Obra ya cargada - No se puede deseleccionar' : (isCodigoSeleccionado(item) ? 'Deseleccionar' : 'Seleccionar')}
                     >
-                      {isCodigoSeleccionado(item) ? '✓' : '+'}
+                      {isCodigoConCantidad(item) ? '+' : (isCodigoSeleccionado(item) ? '✓' : '+')}
                     </button>
                   </div>
                 </div>
@@ -1565,7 +1647,10 @@
                     <button 
                       class="select-btn" 
                       class:selected={isMaterialUtilizadoSeleccionado(item)}
+                      class:disabled={isMaterialUtilizadoConCantidad(item)}
+                      disabled={isMaterialUtilizadoConCantidad(item)}
                       on:click={() => toggleCodigoMaterialUtilizado(item)}
+                      title={isMaterialUtilizadoConCantidad(item) ? 'Material ya cargado - No se puede deseleccionar' : (isMaterialUtilizadoSeleccionado(item) ? 'Deseleccionar' : 'Seleccionar')}
                     >
                       {isMaterialUtilizadoSeleccionado(item) ? '✓' : '+'}
                     </button>
@@ -1713,7 +1798,10 @@
                     <button 
                       class="select-btn" 
                       class:selected={isMaterialRecuperadoSeleccionado(item)}
+                      class:disabled={isMaterialRecuperadoConCantidad(item)}
+                      disabled={isMaterialRecuperadoConCantidad(item)}
                       on:click={() => toggleCodigoMaterialRecuperado(item)}
+                      title={isMaterialRecuperadoConCantidad(item) ? 'Material ya cargado - No se puede deseleccionar' : (isMaterialRecuperadoSeleccionado(item) ? 'Deseleccionar' : 'Seleccionar')}
                     >
                       {isMaterialRecuperadoSeleccionado(item) ? '✓' : '+'}
                     </button>
@@ -2432,6 +2520,17 @@
   
   .select-btn.selected {
     background: #28a745;
+  }
+  
+  .select-btn.disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .select-btn.disabled:hover {
+    background: #6c757d;
+    transform: none;
   }
   
   .no-results {
