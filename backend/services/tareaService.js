@@ -232,12 +232,32 @@ const createTarea = async (req, res) => {
       return res.status(403).json({ error: "No tienes permiso para crear tareas en esta región." });
     }
     
-    const id_tarea_texto = `TAREA-${Date.now()}`;
+    // Generar el nuevo formato: TAREA-DDMMAA-{idproveedor}-{id}
+    const fecha = new Date();
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const año = String(fecha.getFullYear()).slice(-2);
+    const fechaFormateada = `${dia}${mes}${año}`;
+    
+    // Primero insertar la tarea para obtener el ID
     const id_tarea_creada = await new Promise((resolve, reject) => {
       const sql = `INSERT INTO tareas (id_tarea_texto, estado, descripcion, direccion, id_region, id_inspector, id_proveedor) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-      db.run(sql, [id_tarea_texto, "Asignada", descripcion, direccion, id_region, id_inspector, id_proveedor], function(err) {
+      // Usar un placeholder temporal que se actualizará después
+      db.run(sql, ['TEMP-PLACEHOLDER', "Asignada", descripcion, direccion, id_region, id_inspector, id_proveedor], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
+      });
+    });
+    
+    // Ahora generar el id_tarea_texto con el ID real y actualizar
+    const id_tarea_texto = `TAREA-${fechaFormateada}-${id_proveedor}-${id_tarea_creada}`;
+    
+    // Actualizar con el id_tarea_texto real
+    await new Promise((resolve, reject) => {
+      const sql = `UPDATE tareas SET id_tarea_texto = ? WHERE id = ?`;
+      db.run(sql, [id_tarea_texto, id_tarea_creada], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
       });
     });
     
