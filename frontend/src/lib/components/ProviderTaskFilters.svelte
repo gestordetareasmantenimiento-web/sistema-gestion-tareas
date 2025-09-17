@@ -34,7 +34,7 @@
   const estados = [
     { value: '', label: 'Todos los estados' },
     { value: 'Asignada', label: 'Asignada (por defecto)' },
-    { value: 'Pendiente Certificación Inspector', label: 'Pendiente Certificación Inspector' },
+    { value: 'Pendiente Certificación Inspector/Supervisor', label: 'Pendiente Certificación Inspector/Supervisor' },
     { value: 'Pendiente Aprobación Supervisor', label: 'Pendiente Aprobación Supervisor' },
     { value: 'Pendiente Aprobación Administración', label: 'Pendiente Aprobación Administración' },
     { value: 'Pendiente Aprobación Gerente', label: 'Pendiente Aprobación Gerente' },

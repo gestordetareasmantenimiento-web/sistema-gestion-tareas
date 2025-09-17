@@ -14,7 +14,7 @@
     { 
       id: 'certificada', 
       nombre: 'Certificada', 
-      estado: 'Pendiente Certificación Inspector',
+      estado: 'Pendiente Certificación Inspector/Supervisor',
       icono: '✅',
       color: '#28a745',
       descripcion: 'Certificado presentado por el proveedor'

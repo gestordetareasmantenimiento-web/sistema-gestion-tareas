@@ -37,7 +37,7 @@
     { value: '', label: 'Todos los estados' },
     { value: 'Asignada', label: 'Asignada' },
     { value: 'Pendiente Aprobación Administración', label: 'Pendiente Aprobación Administración' },
-    { value: 'Pendiente Certificación Inspector', label: 'Pendiente Certificación Inspector' },
+    { value: 'Pendiente Certificación Inspector/Supervisor', label: 'Pendiente Certificación Inspector/Supervisor' },
     { value: 'Pendiente Aprobación Gerente', label: 'Pendiente Aprobación Gerente' },
     { value: 'Pendiente Aprobación CERCO', label: 'Pendiente Aprobación CERCO' },
     { value: 'Finalizada - Aprobada', label: 'Finalizada - Aprobada' },

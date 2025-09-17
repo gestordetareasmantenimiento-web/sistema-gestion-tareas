@@ -373,8 +373,14 @@
       showSuccess = true;
       dispatch('certificadoEmitido', { tarea: tarea, certificado: result });
       
-      // Mostrar mensaje de éxito
-      alert('✅ Certificado emitido exitosamente!\n\nEl certificado ha sido enviado para revisión del inspector. La tarea ahora está en estado "Pendiente Certificación Inspector".');
+      // Mostrar mensaje de éxito y redirigir
+      alert('✅ Certificado emitido exitosamente!\n\nEl certificado ha sido enviado para revisión del inspector. La tarea ahora está en estado "Pendiente Certificación Inspector/Supervisor".');
+      
+      // Redirigir al dashboard del proveedor y refrescar
+      setTimeout(() => {
+        window.location.href = '/proveedor/dashboard';
+        window.location.reload();
+      }, 100);
       
     } catch (error) {
       console.error('Error:', error);
