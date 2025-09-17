@@ -1276,10 +1276,41 @@
             showEditCertificateModal = false;
             // Invalidar cache y recargar datos
             await invalidateAll();
-            // Forzar recarga de la página para asegurar que se muestren los cambios
+            // Redirigir al dashboard correspondiente según el rol del usuario
             setTimeout(() => {
-              window.location.reload();
-            }, 500);
+              const userRole = $user?.rol?.toLowerCase() || '';
+              let targetRoute = '/dashboard'; // Ruta por defecto
+              
+              switch (userRole) {
+                case 'proveedor':
+                  targetRoute = '/proveedor/dashboard';
+                  break;
+                case 'inspector':
+                  targetRoute = '/dashboard';
+                  break;
+                case 'supervisor de mantenimiento':
+                case 'supervisor de disponibilidad':
+                case 'supervisor de soporte':
+                case 'supervisor de provisión':
+                  targetRoute = '/supervisor/dashboard';
+                  break;
+                case 'administrativo':
+                  targetRoute = '/admin/dashboard';
+                  break;
+                case 'gerente':
+                  targetRoute = '/gerente/dashboard';
+                  break;
+                case 'cerco':
+                  targetRoute = '/cerco/dashboard';
+                  break;
+                default:
+                  console.warn('Rol no reconocido para redirección:', userRole);
+                  targetRoute = '/dashboard';
+              }
+              
+              console.log('🚀 Redirigiendo al dashboard:', targetRoute, 'para rol:', userRole);
+              goto(targetRoute);
+            }, 1000);
           }}
         />
       </div>

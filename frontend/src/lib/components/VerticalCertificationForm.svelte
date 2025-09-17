@@ -16,7 +16,6 @@
   // Estados del formulario
   let currentStep = 1;
   let isSubmitting = false;
-  let showSuccessModal = false;
   
   // Datos del certificado
   let fechaInicio = '';
@@ -978,87 +977,34 @@
   // Función para volver a la tarea
   function handleBackToTask() {
     console.log('handleBackToTask called - taskId:', taskId, 'tarea:', tarea);
+    
+    if (isEditMode) {
+      // Si estamos en modo edición (modal), disparar el evento para cerrar el modal
+      const tareaId = tarea.id || taskId;
+      console.log('🚀 Modo edición: Disparando certificadoEmitido para cerrar el modal.');
+      dispatch('certificadoEmitido', { tarea: tareaId });
+    }
+    
+    // Redirigir al detalle de la tarea
     if (taskId) {
       console.log('Navigating to task:', taskId);
       window.location.href = `/task/${taskId}`;
     } else if (tarea && tarea.id_tarea) {
       console.log('Navigating to task using tarea.id_tarea:', tarea.id_tarea);
       window.location.href = `/task/${tarea.id_tarea}`;
+    } else if (tarea && tarea.id) {
+      console.log('Navigating to task using tarea.id:', tarea.id);
+      window.location.href = `/task/${tarea.id}`;
     } else {
       console.error('No valid task ID available for navigation');
       dispatch('close');
     }
   }
 
-  // Función para volver al dashboard según el rol del usuario
-  function handleBackToDashboard() {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        // Decodificar el token para obtener el rol del usuario
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const userRole = payload.rol;
-        
-        console.log('🔍 Usuario rol:', userRole);
-        console.log('🔍 Payload completo:', payload);
-        
-        // Navegar al dashboard correspondiente según el rol
-        let targetRoute = '/dashboard'; // Ruta por defecto
-        
-        // Normalizar el rol para comparación
-        const normalizedRole = userRole.toLowerCase().trim();
-        console.log('🔍 Rol normalizado:', normalizedRole);
-        
-        switch (normalizedRole) {
-          case 'proveedor':
-            targetRoute = '/proveedor/dashboard';
-            break;
-          case 'inspector':
-            targetRoute = '/dashboard';
-            break;
-          case 'supervisor de mantenimiento':
-            targetRoute = '/supervisor/dashboard';
-            break;
-          case 'supervisor de disponibilidad':
-          case 'supervisor de soporte':
-          case 'supervisor de provisión':
-            targetRoute = '/supervisor/dashboard';
-            break;
-          case 'administrativo':
-            targetRoute = '/admin/dashboard';
-            break;
-          case 'gerente':
-            targetRoute = '/gerente/dashboard';
-            break;
-          case 'cerco':
-            targetRoute = '/cerco/dashboard';
-            break;
-          default:
-            console.warn('Rol no reconocido:', normalizedRole);
-            targetRoute = '/dashboard';
-        }
-        
-        console.log('🚀 Navegando a:', targetRoute);
-        // Usar window.location para forzar una navegación completa
-        window.location.href = targetRoute;
-        
-        // Recargar la página después de un breve delay para asegurar que la navegación se complete
-        setTimeout(() => {
-          console.log('🔄 Recargando página para actualizar datos...');
-          window.location.reload();
-        }, 500);
-      } else {
-        console.error('No token found');
-        window.location.href = '/';
-      }
-    } catch (error) {
-      console.error('Error al navegar al dashboard:', error);
-      window.location.href = '/';
-    }
-  }
-
   // Función para enviar certificado
   async function submitCertificado() {
+    console.log('🔍 DEBUG: submitCertificado llamado - isEditMode:', isEditMode, 'isSubmitting:', isSubmitting);
+    
     isSubmitting = true;
     
     try {
@@ -1147,14 +1093,37 @@
           
           // Mostrar mensaje de éxito usando el sistema de modales
           const successMessage = isEditMode 
-            ? 'El certificado ha sido actualizado y está siendo revisado por el inspector.'
+            ? 'Certificado editado exitosamente. Los cambios se han guardado.'
             : 'El certificado ha sido enviado para revisión del inspector. La tarea ahora está en estado "Pendiente Certificación Inspector/Supervisor".';
           
-          await showSuccess('Certificado emitido exitosamente', successMessage);
+          console.log('🔍 DEBUG: Antes de showSuccess - isEditMode:', isEditMode, 'isSubmitting:', isSubmitting);
           
-          showSuccessModal = true;
-          // Usar tareaId que ya tenemos disponible
-          dispatch('certificadoEmitido', { tarea: tareaId });
+          if (isEditMode) {
+            // En modo edición, mostrar modal personalizado con botón de redirección
+            console.log('🚀 Modo edición: Mostrando modal personalizado con botón de redirección');
+            isSubmitting = false;
+            
+            // Mostrar modal personalizado para edición
+            await showSuccess('Certificado editado exitosamente', successMessage, {
+              showBackButton: true,
+              backButtonText: '📋 Volver a la Tarea',
+              onBackClick: () => {
+                console.log('🚀 Redirigiendo al detalle de la tarea desde el modal...');
+                handleBackToTask();
+              }
+            });
+          } else {
+            // En modo emisión, mostrar modal normal
+            await showSuccess('Certificado editado exitosamente', successMessage);
+          }
+          
+          console.log('🔍 DEBUG: Después de showSuccess - isEditMode:', isEditMode, 'isSubmitting:', isSubmitting);
+          
+          if (!isEditMode) {
+            // En modo emisión, disparar el evento para que la pantalla de éxito maneje la redirección
+            console.log('🔍 DEBUG: Modo emisión - disparando certificadoEmitido');
+            dispatch('certificadoEmitido', { tarea: tareaId });
+          }
         } catch (jsonError) {
           console.error('❌ Error al parsear JSON de respuesta:', jsonError);
           const responseText = await response.text();
@@ -1183,16 +1152,6 @@
   </div>
 {:else}
 <div class="vertical-certification-form">
-  {#if showSuccessModal}
-    <div class="success-screen">
-      <div class="success-icon">🎉</div>
-      <h2>{isEditMode ? '¡Certificado Editado Exitosamente!' : '¡Certificado Emitido Exitosamente!'}</h2>
-      <p>Tu certificado ha sido enviado y está siendo revisado por el inspector.</p>
-      <button class="success-btn" on:click={handleBackToDashboard}>
-        Volver al Dashboard
-      </button>
-    </div>
-  {:else}
     <!-- Header compacto -->
     <div class="form-header">
       <div class="header-top">
@@ -2008,7 +1967,6 @@
         {/if}
       </div>
     </div>
-  {/if}
 </div>
 {/if}
 

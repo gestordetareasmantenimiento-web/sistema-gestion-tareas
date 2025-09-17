@@ -8,6 +8,9 @@ export interface ModalConfig {
   confirmText?: string;
   cancelText?: string;
   showCancel?: boolean;
+  showBackButton?: boolean;
+  backButtonText?: string;
+  onBackClick?: () => void;
 }
 
 export interface ModalState extends ModalConfig {
@@ -37,13 +40,20 @@ export function showInfo(title: string, message: string): Promise<boolean> {
 }
 
 // Función para mostrar un modal de éxito
-export function showSuccess(title: string, message: string): Promise<boolean> {
+export function showSuccess(title: string, message: string, options?: {
+  showBackButton?: boolean;
+  backButtonText?: string;
+  onBackClick?: () => void;
+}): Promise<boolean> {
   return new Promise((resolve) => {
     modalStore.set({
       isVisible: true,
       title,
       message,
       type: 'success',
+      showBackButton: options?.showBackButton || false,
+      backButtonText: options?.backButtonText || 'Volver',
+      onBackClick: options?.onBackClick,
       resolve
     });
   });

@@ -8,6 +8,8 @@
   export let confirmText = 'Confirmar';
   export let cancelText = 'Cancelar';
   export let showCancel = true;
+  export let showBackButton = false;
+  export let backButtonText = 'Volver';
   
   const dispatch = createEventDispatcher();
   
@@ -20,6 +22,11 @@
   
   function handleCancel() {
     dispatch('cancel');
+    closeModal();
+  }
+  
+  function handleBack() {
+    dispatch('back');
     closeModal();
   }
   
@@ -74,7 +81,11 @@
       </div>
       
       <div class="modal-footer">
-        {#if type === 'confirm'}
+        {#if showBackButton}
+          <button class="btn btn-back" on:click={handleBack}>
+            {backButtonText}
+          </button>
+        {:else if type === 'confirm'}
           <button class="btn btn-cancel" on:click={handleCancel}>
             {cancelText}
           </button>
@@ -213,6 +224,15 @@
   
   .btn-cancel:hover {
     background-color: #5a6268;
+  }
+  
+  .btn-back {
+    background-color: #6f42c1;
+    color: white;
+  }
+  
+  .btn-back:hover {
+    background-color: #5a32a3;
   }
   
   /* Responsive */

@@ -10,6 +10,13 @@
   function handleCancel() {
     closeModal(false);
   }
+  
+  function handleBackClick() {
+    if ($modalStore.onBackClick) {
+      $modalStore.onBackClick();
+    }
+    closeModal(true);
+  }
 </script>
 
 <CustomModal
@@ -20,6 +27,9 @@
   confirmText={$modalStore.confirmText}
   cancelText={$modalStore.cancelText}
   showCancel={$modalStore.showCancel}
+  showBackButton={$modalStore.showBackButton}
+  backButtonText={$modalStore.backButtonText}
   on:confirm={handleConfirm}
   on:cancel={handleCancel}
+  on:back={handleBackClick}
 />
