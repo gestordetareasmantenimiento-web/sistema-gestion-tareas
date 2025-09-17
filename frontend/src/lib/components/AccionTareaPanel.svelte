@@ -115,6 +115,21 @@
     // Solo en tareas asignadas con número de WO
     return esAsignada && !!tarea.numero_wo;
   })();
+
+  // Determinar si el usuario CERCO puede exportar mano de obra (siempre habilitado)
+  $: puedeExportarManoDeObra = (() => {
+    if (!userRole || !tarea) return false;
+    
+    const rol = userRole.toLowerCase();
+    
+    // Solo CERCO puede exportar mano de obra
+    if (rol === 'cerco') {
+      // Siempre habilitado si hay número de WO
+      return !!tarea.numero_wo;
+    }
+    
+    return false;
+  })();
   
   // Determinar el siguiente estado al aprobar
   $: siguienteEstado = (() => {
@@ -285,6 +300,54 @@
       isExporting = false;
     }
   }
+
+  async function handleExportarManoDeObra() {
+    if (isExporting) return;
+    
+    isExporting = true;
+    
+    // Timeout de seguridad para resetear el estado después de 10 segundos
+    const timeoutId = setTimeout(() => {
+      isExporting = false;
+    }, 10000);
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:3000/api/tareas/${tarea.id}/exportar-mano-obra`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al exportar la mano de obra');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${tarea.numero_wo}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      // Pequeño delay para que el usuario vea el estado "Exportando..."
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mostrar mensaje de éxito sin bloquear
+      showSuccess('Éxito', 'Mano de obra exportada exitosamente para procesamiento de pago');
+    } catch (error) {
+      console.error('Error al exportar mano de obra:', error);
+      showError('Error', 'No se pudo exportar el archivo de mano de obra');
+    } finally {
+      clearTimeout(timeoutId);
+      isExporting = false;
+    }
+  }
   
   function cancelarFormulario() {
     observacion = '';
@@ -346,7 +409,7 @@
       </div>
     </div>
     
-  {:else if puedeAprobar || puedeObservar || puedeReasignar || puedeEditarCertificado || puedeCertificar}
+  {:else if puedeAprobar || puedeObservar || puedeReasignar || puedeEditarCertificado || puedeCertificar || puedeExportarManoDeObra}
     <!-- Panel de Acción Principal -->
     <div class="accion-principal">
       <div class="accion-header">
@@ -387,6 +450,17 @@
             disabled={isLoading || isExporting}
           >
             {isExporting ? '⏳ Exportando...' : '📊 Exportar Información MO y MAT'}
+          </button>
+        {/if}
+        
+        <!-- Botón de exportación de mano de obra - solo para rol CERCO, siempre habilitado -->
+        {#if puedeExportarManoDeObra}
+          <button 
+            class="btn btn-excel btn-large" 
+            on:click={handleExportarManoDeObra}
+            disabled={isLoading || isExporting}
+          >
+            {isExporting ? '⏳ Exportando...' : '💰 Exportar Mano de Obra'}
           </button>
         {/if}
         

@@ -61,8 +61,15 @@ module.exports = function(upload) {
   router.put('/:id/pasar-observacion', checkRole([ROLES.ADMINISTRATIVO, ROLES.INSPECTOR, ...SUPERVISOR_ROLES]), tareaController.pasarObservacion);
   router.put('/:id/finalizar-observacion', checkRole([ROLES.ADMINISTRATIVO, ROLES.INSPECTOR, ...SUPERVISOR_ROLES, ROLES.PROVEEDOR]), tareaController.finalizarObservacion);
 
+  // --- Ruta de Historial ---
+  router.get('/:id/historial', tareaController.getHistorialTarea);
+
+  // --- Ruta de Mano de Obra ---
+  router.get('/:id/mano-de-obra', tareaController.getManoDeObraTarea);
+
   // --- Ruta de Exportación ---
   router.post('/:id/exportar-materiales', checkRole([ROLES.ADMINISTRATIVO]), tareaController.exportarMateriales);
+  router.post('/:id/exportar-mano-obra', checkRole([ROLES.CERCO]), tareaController.exportarManoDeObra);
   
   // --- Rutas para Adjuntos ---
   router.get('/:id/adjuntos', tareaController.getAdjuntos);

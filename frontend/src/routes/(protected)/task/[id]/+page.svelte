@@ -19,6 +19,11 @@
   
   $: if (certificado?.tarea?.id) {
     loadInfoObservacion();
+    
+    // Calcular métricas si la tarea está finalizada
+    if (certificado.tarea.estado === 'Finalizada - Aprobada') {
+      calcularMetricasCicloVida();
+    }
   }
   let isProcessingAction = false;
   let observacion = '';
@@ -407,7 +412,10 @@
       });
       
       if (response.ok) {
-        await showSuccess('Éxito', mensaje);
+        const result = await response.json();
+        // Usar el mensaje del backend si está disponible, sino usar el mensaje del componente
+        const mensajeFinal = result.message || mensaje;
+        await showSuccess('Éxito', mensajeFinal);
         await invalidateAll();
         await loadInfoObservacion();
       } else {
@@ -428,6 +436,82 @@
     showEditCertificateModal = true;
   }
   
+  // --- LÓGICA DE MÉTRICAS DEL CICLO DE VIDA ---
+  let metricasCicloVida = {
+    diasCreacionAFinalizacion: 0,
+    diasCreacionACertificado: 0,
+    diasCertificadoAFinalizacion: 0,
+    montoConIva: 0,
+    montoSinIva: 0
+  };
+
+  async function calcularMetricasCicloVida() {
+    if (!certificado?.tarea?.id) return;
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:3000/api/tareas/${certificado.tarea.id}/historial`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const historial = result.data || [];
+        
+        // Encontrar fechas clave
+        const creacion = historial.find((h: any) => h.accion === 'Creación');
+        const certificadoEmitido = historial.find((h: any) => h.accion === 'Certificado Emitido');
+        const finalizacion = historial.find((h: any) => h.accion === 'Aprobado por CERCO');
+
+        if (creacion && finalizacion) {
+          const fechaCreacion = new Date(creacion.fecha_evento);
+          const fechaFinalizacion = new Date(finalizacion.fecha_evento);
+          metricasCicloVida.diasCreacionAFinalizacion = Math.ceil((fechaFinalizacion.getTime() - fechaCreacion.getTime()) / (1000 * 60 * 60 * 24));
+        }
+
+        if (creacion && certificadoEmitido) {
+          const fechaCreacion = new Date(creacion.fecha_evento);
+          const fechaCertificado = new Date(certificadoEmitido.fecha_evento);
+          metricasCicloVida.diasCreacionACertificado = Math.ceil((fechaCertificado.getTime() - fechaCreacion.getTime()) / (1000 * 60 * 60 * 24));
+        }
+
+        if (certificadoEmitido && finalizacion) {
+          const fechaCertificado = new Date(certificadoEmitido.fecha_evento);
+          const fechaFinalizacion = new Date(finalizacion.fecha_evento);
+          metricasCicloVida.diasCertificadoAFinalizacion = Math.ceil((fechaFinalizacion.getTime() - fechaCertificado.getTime()) / (1000 * 60 * 60 * 24));
+        }
+      }
+
+      // Calcular montos desde la tabla tarea_mano_de_obra
+      if (certificado?.tarea?.id) {
+        try {
+          const response = await fetch(`http://localhost:3000/api/tareas/${certificado.tarea.id}/mano-de-obra`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            const manoDeObra = result.data || [];
+            
+            let totalSinIva = 0;
+            
+            // Sumar mano de obra desde la tabla
+            manoDeObra.forEach((item: any) => {
+              totalSinIva += (item.precio_calculado || 0);
+            });
+            
+            metricasCicloVida.montoSinIva = totalSinIva;
+            metricasCicloVida.montoConIva = totalSinIva * 1.21; // IVA 21%
+          }
+        } catch (error) {
+          console.error('Error obteniendo mano de obra:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error calculando métricas:', error);
+    }
+  }
+
   // --- LÓGICA DE EXPORTACIÓN A XLSX ---
   async function handleExportarMateriales() {
     const confirmed = await showConfirm('Confirmar Exportación', 'Esto registrará la exportación en el historial. ¿Deseas continuar?');
@@ -603,15 +687,59 @@
     
 
 
-    <!-- Botón Mostrar Ciclo de Vida (solo para tareas finalizadas) -->
+    <!-- Resumen del Ciclo de Vida (solo para tareas finalizadas) -->
     {#if certificado.tarea.estado === 'Finalizada - Aprobada'}
-      <div class="action-panel lifecycle-panel">
-        <h3>📊 Información del Ciclo de Vida</h3>
-        <p>Esta tarea ha sido completada. Puedes ver el historial completo de todos los eventos que ocurrieron durante su procesamiento.</p>
-        <div class="panel-actions">
+      <div class="lifecycle-summary">
+        <div class="lifecycle-header">
+          <div class="lifecycle-title">
+            <h3>📊 Resumen del Ciclo de Vida</h3>
+            <p>Tarea completada exitosamente</p>
+          </div>
           <button class="lifecycle-button" on:click={() => showLifecycle = true}>
-            🕒 Mostrar Ciclo de Vida
+            🕒 Ver Timeline Completo
           </button>
+        </div>
+        
+        <div class="lifecycle-metrics">
+          <div class="metrics-grid">
+            <!-- Métricas de Tiempo -->
+            <div class="metric-card time-metrics">
+              <h4>⏱️ Tiempos de Procesamiento</h4>
+              <div class="metric-items">
+                <div class="metric-item">
+                  <span class="metric-label">Creación → Finalización</span>
+                  <span class="metric-value">{metricasCicloVida.diasCreacionAFinalizacion} días</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Creación → Certificado</span>
+                  <span class="metric-value">{metricasCicloVida.diasCreacionACertificado} días</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Certificado → Finalización</span>
+                  <span class="metric-value">{metricasCicloVida.diasCertificadoAFinalizacion} días</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Métricas de Costo -->
+            <div class="metric-card cost-metrics">
+              <h4>💰 Resumen de Costos</h4>
+              <div class="metric-items">
+                <div class="metric-item">
+                  <span class="metric-label">Subtotal (sin IVA)</span>
+                  <span class="metric-value">${metricasCicloVida.montoSinIva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">IVA (21%)</span>
+                  <span class="metric-value">${(metricasCicloVida.montoConIva - metricasCicloVida.montoSinIva).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div class="metric-item total">
+                  <span class="metric-label">Total (con IVA)</span>
+                  <span class="metric-value">${metricasCicloVida.montoConIva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     {/if}
@@ -1431,37 +1559,144 @@
     cursor: not-allowed;
   }
   
-  .lifecycle-panel {
+  .lifecycle-summary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
     color: white;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   }
   
-  .lifecycle-panel h3 {
-    color: white;
+  .lifecycle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    gap: 2rem;
   }
   
-  .lifecycle-panel p {
+  .lifecycle-title h3 {
+    color: white;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  
+  .lifecycle-title p {
     color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+    font-size: 1rem;
   }
   
   .lifecycle-button {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
     color: white;
     border: 2px solid rgba(255, 255, 255, 0.3);
     padding: 0.75rem 1.5rem;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     font-size: 1rem;
     font-weight: 500;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
+    white-space: nowrap;
   }
   
   .lifecycle-button:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.25);
     border-color: rgba(255, 255, 255, 0.5);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .lifecycle-metrics {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+  }
+  
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  
+  .metric-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .metric-card h4 {
+    color: white;
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .metric-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .metric-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .metric-item:last-child {
+    border-bottom: none;
+  }
+  
+  .metric-item.total {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+  }
+  
+  .metric-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+  }
+  
+  .metric-value {
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  
+  .metric-item.total .metric-value {
+    font-size: 1.1rem;
+    color: #4ade80;
+  }
+  
+  @media (max-width: 768px) {
+    .lifecycle-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+    
+    .metrics-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    
+    .lifecycle-summary {
+      padding: 1.5rem;
+    }
   }
   
   .error-container {

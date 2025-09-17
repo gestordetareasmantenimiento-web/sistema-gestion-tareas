@@ -823,6 +823,127 @@ const getHistorialTarea = async (req, res) => {
   }
 };
 
+// Obtener mano de obra de una tarea
+const getManoDeObraTarea = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const sql = `
+      SELECT 
+        tmo.id,
+        tmo.cantidad,
+        tmo.precio_calculado,
+        mo.codigo,
+        mo.descripcion,
+        mo.unidad_medida
+      FROM tarea_mano_de_obra tmo
+      JOIN mano_de_obra mo ON tmo.id_mano_de_obra = mo.id
+      WHERE tmo.id_tarea = ?
+      ORDER BY mo.codigo
+    `;
+    
+    db.all(sql, [id], (err, rows) => {
+      if (err) {
+        console.error('Error al obtener mano de obra:', err);
+        return res.status(500).json({ error: 'Error interno del servidor al obtener mano de obra.' });
+      }
+      
+      res.json({ 
+        message: "success", 
+        data: rows 
+      });
+    });
+  } catch (error) {
+    console.error('Error al obtener mano de obra:', error);
+    res.status(500).json({ error: 'Error interno del servidor al obtener mano de obra.' });
+  }
+};
+
+// Exportar mano de obra para CERCO
+const exportarManoDeObra = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { id: id_usuario } = req.user;
+    
+    // Obtener información de la tarea para el nombre del archivo
+    const tarea = await new Promise((resolve, reject) => {
+      const sql = "SELECT numero_wo FROM tareas WHERE id = ?";
+      db.get(sql, [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    if (!tarea || !tarea.numero_wo) {
+      return res.status(400).json({ error: "La tarea no tiene número de WO asignado." });
+    }
+    
+    // Obtener mano de obra
+    const manoDeObra = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          mo.codigo,
+          mo.descripcion,
+          mo.unidad_medida,
+          tmo.cantidad
+        FROM tarea_mano_de_obra tmo
+        JOIN mano_de_obra mo ON tmo.id_mano_de_obra = mo.id
+        WHERE tmo.id_tarea = ?
+        ORDER BY mo.codigo
+      `;
+      db.all(sql, [id], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    if (!manoDeObra || manoDeObra.length === 0) {
+      return res.status(400).json({ error: "No hay mano de obra registrada para esta tarea." });
+    }
+    
+    // Crear Excel
+    const XLSX = require('xlsx');
+    const workbook = XLSX.utils.book_new();
+    
+    // Crear hoja de mano de obra
+    const manoDeObraData = [
+      ['Código', 'Descripción', 'Unidad de Medida', 'Cantidad Certificada']
+    ];
+    
+    manoDeObra.forEach((item) => {
+      manoDeObraData.push([
+        item.codigo,
+        item.descripcion,
+        item.unidad_medida,
+        item.cantidad
+      ]);
+    });
+    
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(manoDeObraData), 'Mano de Obra');
+    
+    // Generar buffer de Excel
+    const excelBuffer = XLSX.write(workbook, { 
+      bookType: 'xlsx', 
+      type: 'buffer',
+      compression: true
+    });
+    
+    // Configurar headers para descarga
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${tarea.numero_wo}.xlsx"`);
+    res.setHeader('Content-Length', excelBuffer.length);
+    
+    res.send(excelBuffer);
+    
+    // Registrar en historial
+    await historialService.registrar(id, id_usuario, 'Exportación de Mano de Obra', 'El usuario CERCO ha exportado la mano de obra para procesamiento de pago.');
+    
+  } catch (error) {
+    console.error('Error al exportar mano de obra:', error);
+    res.status(500).json({ error: 'Error interno del servidor al exportar mano de obra.' });
+  }
+};
+
 // Función para editar certificado cuando hay observación
 const editarCertificado = async (req, res) => {
   try {
@@ -1179,6 +1300,9 @@ module.exports = {
     editarCertificado,
     getAdjuntos,
     addAdjunto,
-    exportarMateriales
+    exportarMateriales,
+    getHistorialTarea,
+    getManoDeObraTarea,
+    exportarManoDeObra
 };
 
