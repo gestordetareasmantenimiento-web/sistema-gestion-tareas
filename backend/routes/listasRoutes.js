@@ -26,10 +26,22 @@ router.get('/inspectores-subordinados',
   listasController.getInspectoresPorSupervisor
 );
 
-// Los administrativos y CERCO pueden ver todos los inspectores
+// Los administrativos, CERCO y proveedores pueden ver todos los inspectores
 router.get('/inspectores', 
-  checkRole([ROLES.ADMINISTRATIVO, ROLES.CERCO]), 
+  checkRole([ROLES.ADMINISTRATIVO, ROLES.CERCO, ROLES.PROVEEDOR]), 
   listasController.getAllInspectores
+);
+
+// Obtener inspectores que tienen tareas en una región específica
+router.get('/inspectores/region/:region', 
+  checkRole([ROLES.ADMINISTRATIVO, ROLES.CERCO, ROLES.PROVEEDOR]), 
+  listasController.getInspectoresPorRegion
+);
+
+// Obtener regiones donde un inspector específico tiene tareas
+router.get('/regiones/inspector/:inspector', 
+  checkRole([ROLES.ADMINISTRATIVO, ROLES.CERCO, ROLES.PROVEEDOR]), 
+  listasController.getRegionesPorInspector
 );
 
 // Rutas para mano de obra y materiales

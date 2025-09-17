@@ -41,6 +41,51 @@ exports.getAllInspectores = (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "success", data: rows });
   });
+}
+
+// Obtener inspectores y supervisores que tienen tareas en una región específica
+exports.getInspectoresPorRegion = (req, res) => {
+  const { region } = req.params;
+  const sql = `
+    SELECT DISTINCT
+      u.id, 
+      u.nombre_completo as nombre,
+      u.rol
+    FROM usuarios u 
+    INNER JOIN tareas t ON t.id_inspector = u.id
+    INNER JOIN regiones r ON t.id_region = r.id
+    WHERE u.rol IN ('inspector', 'supervisor de mantenimiento') 
+    AND u.activo = 1 
+    AND r.nombre = ?
+    ORDER BY u.nombre_completo
+  `;
+  db.all(sql, [region], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "success", data: rows });
+  });
+}
+
+// Obtener regiones donde un inspector o supervisor específico tiene tareas
+exports.getRegionesPorInspector = (req, res) => {
+  const { inspector } = req.params;
+  const sql = `
+    SELECT DISTINCT
+      r.id,
+      r.nombre,
+      r.descripcion
+    FROM regiones r 
+    INNER JOIN tareas t ON t.id_region = r.id
+    INNER JOIN usuarios u ON t.id_inspector = u.id
+    WHERE u.nombre_completo = ?
+    AND u.rol IN ('inspector', 'supervisor de mantenimiento')
+    AND u.activo = 1
+    AND r.activo = 1
+    ORDER BY r.nombre
+  `;
+  db.all(sql, [inspector], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "success", data: rows });
+  });
 };
 
 // Obtener el catálogo de mano de obra

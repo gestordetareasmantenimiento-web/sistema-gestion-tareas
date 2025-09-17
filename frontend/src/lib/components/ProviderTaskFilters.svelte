@@ -14,6 +14,11 @@
   
   // Regiones disponibles (para proveedores siempre se muestra)
   let regionesDisponibles: any[] = [];
+  let regionesFiltradas: any[] = [];
+  
+  // Inspectores disponibles
+  let inspectoresDisponibles: any[] = [];
+  let inspectoresFiltrados: any[] = [];
   
   // Categorías específicas para proveedores
   const categorias = [
@@ -49,7 +54,84 @@
     filtrosRegion = [];
     filtrosInspector = [];
     busqueda = '';
+    
+    // Restaurar listas completas
+    regionesFiltradas = [...regionesDisponibles];
+    inspectoresFiltrados = [...inspectoresDisponibles];
+    
     emitirFiltros();
+  }
+
+  // Función para actualizar inspectores cuando cambia la región
+  async function actualizarInspectoresPorRegion(regionesSeleccionadas: string[]) {
+    const token = localStorage.getItem('authToken');
+    if (!token || regionesSeleccionadas.length === 0) {
+      inspectoresFiltrados = [...inspectoresDisponibles];
+      return;
+    }
+
+    try {
+      // Si hay múltiples regiones, obtener inspectores de todas
+      const promesas = regionesSeleccionadas.map(region => 
+        fetch(`http://localhost:3000/api/listas/inspectores/region/${encodeURIComponent(region)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      );
+      
+      const respuestas = await Promise.all(promesas);
+      const datos = await Promise.all(respuestas.map(r => r.json()));
+      
+      // Combinar y deduplicar inspectores
+      const inspectoresUnicos = new Map();
+      datos.forEach(response => {
+        if (response.data) {
+          response.data.forEach((inspector: any) => {
+            inspectoresUnicos.set(inspector.id, inspector);
+          });
+        }
+      });
+      
+      inspectoresFiltrados = Array.from(inspectoresUnicos.values());
+    } catch (error) {
+      console.error('Error actualizando inspectores por región:', error);
+      inspectoresFiltrados = [...inspectoresDisponibles];
+    }
+  }
+
+  // Función para actualizar regiones cuando cambia el inspector
+  async function actualizarRegionesPorInspector(inspectoresSeleccionados: string[]) {
+    const token = localStorage.getItem('authToken');
+    if (!token || inspectoresSeleccionados.length === 0) {
+      regionesFiltradas = [...regionesDisponibles];
+      return;
+    }
+
+    try {
+      // Si hay múltiples inspectores, obtener regiones de todos
+      const promesas = inspectoresSeleccionados.map(inspector => 
+        fetch(`http://localhost:3000/api/listas/regiones/inspector/${encodeURIComponent(inspector)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      );
+      
+      const respuestas = await Promise.all(promesas);
+      const datos = await Promise.all(respuestas.map(r => r.json()));
+      
+      // Combinar y deduplicar regiones
+      const regionesUnicas = new Map();
+      datos.forEach(response => {
+        if (response.data) {
+          response.data.forEach((region: any) => {
+            regionesUnicas.set(region.id, region);
+          });
+        }
+      });
+      
+      regionesFiltradas = Array.from(regionesUnicas.values());
+    } catch (error) {
+      console.error('Error actualizando regiones por inspector:', error);
+      regionesFiltradas = [...regionesDisponibles];
+    }
   }
   
   // Función para emitir los filtros al componente padre
@@ -71,15 +153,28 @@
     startLoading('Cargando filtros...');
     
     try {
-      // Cargar regiones del usuario
-      const regionesRes = await fetch('http://localhost:3000/api/user/regions', { 
+      // Para proveedores, cargar TODAS las regiones (pueden operar en cualquier región)
+      // Para otros roles, cargar solo las regiones asignadas al usuario
+      const regionesRes = await fetch('http://localhost:3000/api/regiones/', { 
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (regionesRes.ok) {
         regionesDisponibles = (await regionesRes.json()).data;
       }
+      
+      // Cargar inspectores disponibles
+      const inspectoresRes = await fetch('http://localhost:3000/api/listas/inspectores', { 
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (inspectoresRes.ok) {
+        inspectoresDisponibles = (await inspectoresRes.json()).data;
+        inspectoresFiltrados = [...inspectoresDisponibles];
+      }
+      
+      // Inicializar listas filtradas
+      regionesFiltradas = [...regionesDisponibles];
     } catch (error) {
-      console.error('Error cargando regiones:', error);
+      console.error('Error cargando filtros:', error);
     } finally {
       stopLoading();
     }
@@ -131,11 +226,17 @@
       <MultiSelect
         label="Regiones:"
         id="regiones-filter"
-        options={regionesDisponibles.map(r => ({ value: r.nombre, label: r.nombre }))}
+        options={regionesFiltradas.map(r => ({ value: r.nombre, label: r.nombre }))}
         selectedValues={filtrosRegion}
         placeholder="Seleccionar regiones..."
-        on:change={(e) => {
+        on:change={async (e) => {
           filtrosRegion = e.detail;
+          // Actualizar inspectores basado en regiones seleccionadas
+          await actualizarInspectoresPorRegion(filtrosRegion);
+          // Limpiar selección de inspectores si ya no están disponibles
+          filtrosInspector = filtrosInspector.filter(inspector => 
+            inspectoresFiltrados.some(i => i.nombre === inspector)
+          );
           emitirFiltros();
         }}
       />
@@ -146,11 +247,17 @@
       <MultiSelect
         label="Inspectores:"
         id="inspectores-filter"
-        options={[]}
+        options={inspectoresFiltrados.map(i => ({ value: i.nombre, label: i.nombre }))}
         selectedValues={filtrosInspector}
         placeholder="Seleccionar inspectores..."
-        on:change={(e) => {
+        on:change={async (e) => {
           filtrosInspector = e.detail;
+          // Actualizar regiones basado en inspectores seleccionados
+          await actualizarRegionesPorInspector(filtrosInspector);
+          // Limpiar selección de regiones si ya no están disponibles
+          filtrosRegion = filtrosRegion.filter(region => 
+            regionesFiltradas.some(r => r.nombre === region)
+          );
           emitirFiltros();
         }}
       />
