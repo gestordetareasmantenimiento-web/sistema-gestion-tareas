@@ -21,26 +21,69 @@ exports.getInspectoresPorSupervisor = (req, res) => {
 };
 
 // Obtener todos los inspectores y supervisores (para administrativos)
-exports.getAllInspectores = (req, res) => {
-  const sql = `
-    SELECT 
-      u.id, 
-      u.nombre_completo as nombre,
-      u.rol,
-      CASE 
-        WHEN u.rol = 'inspector' AND u.id_supervisor IS NOT NULL THEN 
-          (SELECT nombre_completo FROM usuarios WHERE id = u.id_supervisor)
-        ELSE NULL 
-      END as supervisor_nombre
-    FROM usuarios u 
-    WHERE u.rol IN ('inspector', 'supervisor de mantenimiento') 
-    AND u.activo = 1 
-    ORDER BY u.rol, u.nombre_completo
-  `;
-  db.all(sql, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: "success", data: rows });
-  });
+exports.getAllInspectores = async (req, res) => {
+  try {
+    const userRole = req.user.rol;
+    const userId = req.user.id;
+    
+    let sql;
+    let params = [];
+    
+    if (userRole === 'administrativo') {
+      // Para administrativos, solo mostrar inspectores/supervisores de sus regiones
+      const regionService = require('../services/regionService');
+      const userRegions = await regionService.getUserRegions(userId);
+      
+      if (userRegions.length === 0) {
+        return res.json({ message: "success", data: [] });
+      }
+      
+      sql = `
+        SELECT DISTINCT
+          u.id, 
+          u.nombre_completo as nombre,
+          u.rol,
+          CASE 
+            WHEN u.rol = 'inspector' AND u.id_supervisor IS NOT NULL THEN 
+              (SELECT nombre_completo FROM usuarios WHERE id = u.id_supervisor)
+            ELSE NULL 
+          END as supervisor_nombre
+        FROM usuarios u 
+        INNER JOIN usuario_regiones ur ON u.id = ur.id_usuario
+        WHERE u.rol IN ('inspector', 'supervisor de mantenimiento') 
+        AND u.activo = 1 
+        AND ur.id_region IN (${userRegions.map(() => '?').join(', ')})
+        AND ur.activo = 1
+        ORDER BY u.rol, u.nombre_completo
+      `;
+      params = userRegions.map(r => r.id);
+    } else {
+      // Para otros roles (CERCO, PROVEEDOR), mostrar todos
+      sql = `
+        SELECT 
+          u.id, 
+          u.nombre_completo as nombre,
+          u.rol,
+          CASE 
+            WHEN u.rol = 'inspector' AND u.id_supervisor IS NOT NULL THEN 
+              (SELECT nombre_completo FROM usuarios WHERE id = u.id_supervisor)
+            ELSE NULL 
+          END as supervisor_nombre
+        FROM usuarios u 
+        WHERE u.rol IN ('inspector', 'supervisor de mantenimiento') 
+        AND u.activo = 1 
+        ORDER BY u.rol, u.nombre_completo
+      `;
+    }
+    
+    db.all(sql, params, (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: "success", data: rows });
+    });
+  } catch (error) {
+    console.error('Error al obtener inspectores:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
 }
 
 // Obtener inspectores y supervisores que tienen tareas en una región específica

@@ -40,11 +40,11 @@
     { value: 'Pendiente Aprobación Gerente', label: 'Pendiente Aprobación Gerente' },
     { value: 'Pendiente Aprobación CERCO', label: 'Pendiente Aprobación CERCO' },
     { value: 'Finalizada - Aprobada', label: 'Finalizada - Aprobada' },
-    { value: 'Observada por Inspector', label: 'Observada por Inspector' },
-    { value: 'Observada por Supervisor', label: 'Observada por Supervisor' },
-    { value: 'Observada por Administración', label: 'Observada por Administración' },
-    { value: 'Observada por Gerente', label: 'Observada por Gerente' },
-    { value: 'Observada por CERCO', label: 'Observada por CERCO' }
+    { value: 'Observada por inspector', label: 'Observada por Inspector' },
+    { value: 'Observada por supervisor', label: 'Observada por Supervisor' },
+    { value: 'Observada por administración', label: 'Observada por Administración' },
+    { value: 'Observada por gerente', label: 'Observada por Gerente' },
+    { value: 'Observada por cerco', label: 'Observada por CERCO' }
   ];
   
   // Función para limpiar todos los filtros

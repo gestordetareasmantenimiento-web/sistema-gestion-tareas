@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { startLoading, stopLoading } from '$lib/utils/loadingUtils';
+  import { showSuccess, showError } from '$lib/services/modalService';
   
   const dispatch = createEventDispatcher();
   
@@ -11,7 +12,7 @@
   // Estados del formulario
   let currentStep = 1;
   let isSubmitting = false;
-  let showSuccess = false;
+  let showSuccessScreen = false;
   
   // Datos del certificado
   let fechaInicio = '';
@@ -370,11 +371,11 @@
         throw new Error(result.error || 'Error al emitir el certificado');
       }
       
-      showSuccess = true;
+      showSuccessScreen = true;
       dispatch('certificadoEmitido', { tarea: tarea, certificado: result });
       
-      // Mostrar mensaje de éxito y redirigir
-      alert('✅ Certificado emitido exitosamente!\n\nEl certificado ha sido enviado para revisión del inspector. La tarea ahora está en estado "Pendiente Certificación Inspector/Supervisor".');
+      // Mostrar mensaje de éxito usando el sistema de modales
+      await showSuccess('Certificado emitido exitosamente', 'El certificado ha sido enviado para revisión del inspector. La tarea ahora está en estado "Pendiente Certificación Inspector/Supervisor".');
       
       // Redirigir al dashboard del proveedor y refrescar
       setTimeout(() => {
@@ -385,7 +386,7 @@
     } catch (error) {
       console.error('Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      alert(`Error al emitir el certificado: ${errorMessage}`);
+      await showError('Error', `Error al emitir el certificado: ${errorMessage}`);
     } finally {
       isSubmitting = false;
       stopLoading();
@@ -420,7 +421,7 @@
 </script>
 
 <div class="certification-form">
-  {#if showSuccess}
+  {#if showSuccessScreen}
     <div class="success-screen">
       <div class="success-icon">🎉</div>
       <h2>¡Certificado Emitido Exitosamente!</h2>

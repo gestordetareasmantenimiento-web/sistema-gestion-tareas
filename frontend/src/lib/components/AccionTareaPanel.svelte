@@ -38,8 +38,10 @@
   // Determinar si el usuario puede finalizar observación
   $: puedeFinalizarObservacion = infoObservacion && infoObservacion.puede_finalizar && [
     'administrativo', 'inspector', 'supervisor de mantenimiento',
-    'supervisor de disponibilidad', 'supervisor de soporte', 'supervisor de provision', 'proveedor'
-  ].includes(userRole.toLowerCase());
+    'supervisor de disponibilidad', 'supervisor de soporte', 'supervisor de provision'
+  ].includes(userRole.toLowerCase()) && 
+  // El proveedor NO puede finalizar observaciones cuando la tarea está "Observada por inspector"
+  !(userRole.toLowerCase() === 'proveedor' && tarea.estado === 'Observada por inspector');
   
   // Determinar si la tarea está en estado de observación
   $: esTareaObservada = tarea.estado && tarea.estado.toLowerCase().includes('observada');

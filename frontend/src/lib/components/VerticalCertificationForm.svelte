@@ -1143,15 +1143,14 @@
       if (response.ok) {
         try {
           const result = await response.json();
-          const successMessage = isEditMode ? '✅ Certificado editado exitosamente:' : '✅ Certificado emitido exitosamente:';
-          console.log(successMessage, result);
+          console.log('✅ Certificado procesado exitosamente:', result);
           
-          // Mostrar mensaje de éxito
-          const alertMessage = isEditMode 
-            ? '✅ Certificado editado exitosamente!\n\nEl certificado ha sido actualizado y está siendo revisado por el inspector.'
-            : '✅ Certificado emitido exitosamente!\n\nEl certificado ha sido enviado para revisión del inspector. La tarea ahora está en estado "Pendiente Certificación Inspector/Supervisor".';
+          // Mostrar mensaje de éxito usando el sistema de modales
+          const successMessage = isEditMode 
+            ? 'El certificado ha sido actualizado y está siendo revisado por el inspector.'
+            : 'El certificado ha sido enviado para revisión del inspector. La tarea ahora está en estado "Pendiente Certificación Inspector/Supervisor".';
           
-          alert(alertMessage);
+          await showSuccess('Certificado emitido exitosamente', successMessage);
           
           showSuccessModal = true;
           // Usar tareaId que ya tenemos disponible

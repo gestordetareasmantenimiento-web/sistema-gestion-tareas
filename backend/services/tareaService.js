@@ -60,7 +60,7 @@ const getAllTareas = async (req, res) => {
             'Pendiente Aprobación Gerente',
             'Pendiente Aprobación CERCO'
           ].includes(t.estado)),
-          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada') || t.estado.toLowerCase().includes('observado')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
           canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })
@@ -73,7 +73,7 @@ const getAllTareas = async (req, res) => {
           pendientes: tareas.filter(t => t.estado === 'Asignada'),
           pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector' || t.estado === 'Pendiente Certificación Inspector/Supervisor'),
           aprobados: tareas.filter(t => ['Pendiente Aprobación Supervisor', 'Pendiente Aprobación Administración', 'Pendiente Aprobación Gerente', 'Pendiente Aprobación CERCO'].includes(t.estado)),
-          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada') || t.estado.toLowerCase().includes('observado')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
           canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })
@@ -87,7 +87,7 @@ const getAllTareas = async (req, res) => {
           pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector' || t.estado === 'Pendiente Certificación Inspector/Supervisor'),
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Supervisor'),
           enCircuito: tareas.filter(t => !['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Certificación Inspector/Supervisor', 'Pendiente Aprobación Supervisor'].includes(t.estado)),
-          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada') || t.estado.toLowerCase().includes('observado')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
           canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })
@@ -101,7 +101,7 @@ const getAllTareas = async (req, res) => {
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Administración'),
           tareasGeneradas: tareas.filter(t => t.numero_wo && ['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Certificación Inspector/Supervisor'].includes(t.estado)),
           aprobadasPorAdmin: tareas.filter(t => ['Pendiente Aprobación Gerente', 'Pendiente Aprobación CERCO', 'Finalizada - Aprobada'].includes(t.estado)),
-          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada') || t.estado.toLowerCase().includes('observado')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
           canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })
@@ -114,7 +114,7 @@ const getAllTareas = async (req, res) => {
           pendientesDeAutorizacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Gerente'), // Filtro por defecto
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Administración'),
           enCircuito: tareas.filter(t => !['Pendiente Aprobación Gerente', 'Pendiente Aprobación Administración'].includes(t.estado)),
-          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada') || t.estado.toLowerCase().includes('observado')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
           canceladas: tareas.filter(t => t.estado === 'Cancelada'),
           // Para el gerente, mostrar por defecto las pendientes de autorización
@@ -144,7 +144,7 @@ const getAllTareas = async (req, res) => {
           pendientesDeCertificacion: tareas.filter(t => t.estado === 'Pendiente Certificación Inspector' || t.estado === 'Pendiente Certificación Inspector/Supervisor'),
           pendientesDeAprobacion: tareas.filter(t => t.estado === 'Pendiente Aprobación Supervisor'),
           enCircuito: tareas.filter(t => !['Asignada', 'Pendiente Certificación Inspector', 'Pendiente Certificación Inspector/Supervisor', 'Pendiente Aprobación Supervisor'].includes(t.estado)),
-          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada')),
+          observados: tareas.filter(t => t.estado.toLowerCase().includes('observada') || t.estado.toLowerCase().includes('observado')),
           finalizadas: tareas.filter(t => t.estado === 'Finalizada - Aprobada'),
           canceladas: tareas.filter(t => t.estado === 'Cancelada')
         })

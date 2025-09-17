@@ -95,7 +95,7 @@
           'Pendiente Aprobación CERCO'
         ].includes(tarea.estado);
       case 'observados':
-        return tarea.estado.toLowerCase().includes('observada');
+        return tarea.estado.toLowerCase().includes('observada') || tarea.estado.toLowerCase().includes('observado');
       case 'finalizadas':
         return tarea.estado === 'Finalizada - Aprobada';
       default:
