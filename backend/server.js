@@ -118,6 +118,9 @@ const adminRoutes = require('./routes/adminRoutes');
 const { authenticateToken } = require('./middleware/authMiddleware');
 app.use('/api/admin', authenticateToken, adminRoutes);
 
+const favoritosRoutes = require('./routes/favoritosRoutes');
+app.use('/api/favoritos', favoritosRoutes);
+
 
 app.get('/', (req, res) => { res.send('Servidor principal funcionando correctamente.'); });
 

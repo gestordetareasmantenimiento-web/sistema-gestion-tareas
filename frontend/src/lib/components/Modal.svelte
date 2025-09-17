@@ -26,12 +26,15 @@
 
   .modal-content {
     background-color: white;
-    padding: 2rem;
+    padding: 1rem;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     position: relative;
-    width: 90%;
-    max-width: 600px; /* Ancho máximo del modal */
+    width: 95%;
+    max-width: 1000px; /* Ancho máximo del modal - más reducido */
+    max-height: 90vh; /* Altura máxima para evitar que se corte */
+    overflow-y: auto; /* Scroll si es necesario */
+    box-sizing: border-box; /* Incluir padding en el cálculo del ancho */
   }
 
   .close-button {
